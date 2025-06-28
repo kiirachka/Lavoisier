@@ -1,5 +1,4 @@
 import logging
-from keep_alive import keep_alive
 from telegram import (
     Update, 
     ReplyKeyboardMarkup, 
@@ -315,5 +314,4 @@ def main():
     application.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
-    keep_alive()
     main()
