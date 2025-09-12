@@ -1,6 +1,4 @@
 python-telegram-bot[job-queue] == 20.7
 python-dotenv == 1.0.0
 supabase == 2.3.1
-# Пакет httpx УДАЛЕН отсюда, он установится автоматически ка зависимость python-telegram-bot
-flask == 2.3.3
-gunicorn == 21.2.0
+# Убираем flask и gunicorn, так как они больше не нужны
