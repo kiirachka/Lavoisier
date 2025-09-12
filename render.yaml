@@ -1,13 +1,9 @@
 services:
   - type: web
     name: stellar-bot
-    env: python
+    env: docker
     plan: free
-    runtime: python-3.11  # ← ЭТО КЛЮЧ! Не "python", а "python-3.11"
-    buildCommand: |
-      python --version
-      pip install --no-cache-dir -r requirements.txt
-    startCommand: python run.py
+    region: oregon
     envVars:
       - key: BOT_TOKEN
         sync: false
