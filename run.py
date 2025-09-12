@@ -5,7 +5,7 @@
 import os
 import sys
 
-# 👇 Добавь эти 2 строки для отладки
+# 👇 Добавь эти 2 строки для отладк
 print("🐍 Python version:", sys.version)
 print("📍 Executable:", sys.executable)
 
