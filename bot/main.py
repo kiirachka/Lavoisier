@@ -14,13 +14,10 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     """Запускает бота."""
     load_dotenv()
-
     application = ApplicationBuilder().token(os.getenv('BOT_TOKEN')).build()
-
     application.add_handler(CommandHandler("start", start))
-
-    # ВАЖНО: Используем polling вместо webhook!
-    print("Бот запущен в режиме polling...")
+    
+    logger.info("Бот запущен в режиме polling...")
     application.run_polling()
 
 if __name__ == "__main__":
