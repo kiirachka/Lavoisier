@@ -13,11 +13,21 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     """Запускает бота."""
+    logger.info("Инициализация бота...")
+    
     load_dotenv()
-    application = ApplicationBuilder().token(os.getenv('BOT_TOKEN')).build()
+    
+    # Проверяем наличие токена
+    token = os.getenv('BOT_TOKEN')
+    if not token:
+        logger.error("BOT_TOKEN не найден в переменных окружения!")
+        return
+    
+    logger.info("BOT_TOKEN найден, создаем Application...")
+    application = ApplicationBuilder().token(token).build()
     application.add_handler(CommandHandler("start", start))
     
-    logger.info("Бот запущен в режиме polling...")
+    logger.info("Запускаем бота в режиме polling...")
     application.run_polling()
 
 if __name__ == "__main__":
