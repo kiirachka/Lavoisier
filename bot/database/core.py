@@ -1,32 +1,54 @@
 import os
+import logging
 from supabase import create_client, Client
 from telegram import User as TgUser
+
+# Настраиваем логирование
+logger = logging.getLogger(__name__)
 
 # Глобальная переменная для хранения подключения
 supabase: Client = None
 
 def get_supabase() -> Client:
-    """Возвращает подключение к Supabase. Создает его, если оно еще не инициализировано."""
+    """Возвращает подключение к Supabase."""
     global supabase
     if supabase is None:
+        logger.info("Инициализация подключения к Supabase...")
         url: str = os.getenv("SUPABASE_URL")
         key: str = os.getenv("SUPABASE_KEY")
+        
+        if not url or not key:
+            logger.error("SUPABASE_URL или SUPABASE_KEY не найдены!")
+            return None
+            
         supabase = create_client(url, key)
+        logger.info("Подключение к Supabase установлено")
     return supabase
 
 async def create_user_if_not_exists(user: TgUser) -> None:
     """Добавляет пользователя в базу данных, если его там еще нет."""
-    supabase = get_supabase()
+    logger.info(f"Проверка пользователя {user.id} в БД...")
     
-    # Проверяем, существует ли пользователь
-    user_exists = supabase.table('users').select('user_id').eq('user_id', user.id).execute()
+    supabase_client = get_supabase()
+    if not supabase_client:
+        logger.error("Не удалось подключиться к Supabase")
+        return
     
-    if not user_exists.data:
-        # Если пользователя нет, создаем новую запись
-        new_user = {
-            "user_id": user.id,
-            "username": user.username,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-        }
-        supabase.table('users').insert(new_user).execute()
+    try:
+        user_exists = supabase_client.table('users').select('user_id').eq('user_id', user.id).execute()
+        
+        if not user_exists.data:
+            logger.info(f"Пользователь {user.id} не найден, создаем...")
+            new_user = {
+                "user_id": user.id,
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            }
+            result = supabase_client.table('users').insert(new_user).execute()
+            logger.info(f"Пользователь {user.id} добавлен в БД")
+        else:
+            logger.info(f"Пользователь {user.id} уже существует в БД")
+            
+    except Exception as e:
+        logger.error(f"Ошибка при работе с БД: {e}")
