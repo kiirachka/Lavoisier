@@ -1,5 +1,7 @@
 import os
 import logging
+import signal
+import asyncio
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler
 from bot.handlers.start import start
@@ -11,9 +13,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Глобальная переменная для application
+application = None
+
+def signal_handler(signum, frame):
+    """Обработчик сигналов для graceful shutdown"""
+    logger.info("Получен сигнал завершения...")
+    if application:
+        logger.info("Останавливаем бота...")
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(application.stop())
+        loop.run_until_complete(application.shutdown())
+    exit(0)
+
 def main() -> None:
     """Запускает бота."""
+    global application
+    
     logger.info("Инициализация бота...")
+    
+    # Регистрируем обработчики сигналов
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
     
     load_dotenv()
     
