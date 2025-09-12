@@ -1,0 +1,23 @@
+# Файл окружения
+.env
+.env.production
+
+# Виртуальное окружение Python
+venv/
+env/
+
+# Кэш Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Логи
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+Dockerfile.dev
