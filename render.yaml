@@ -3,8 +3,10 @@ services:
     name: stellar-bot
     env: python
     plan: free
-    runtime: python-3.11  # ← ЭТО КЛЮЧЕВОЕ ИЗМЕНЕНИЕ! Не просто "python", а "python-3.11"
-    buildCommand: pip install --no-cache-dir -r requirements.txt
+    runtime: python-3.11  # ← ЭТО КЛЮЧ! Не "python", а "python-3.11"
+    buildCommand: |
+      python --version
+      pip install --no-cache-dir -r requirements.txt
     startCommand: python run.py
     envVars:
       - key: BOT_TOKEN
