@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""
-Простой скрипт для запуска бота
-"""
 import os
 import sys
 
-# 👇 ЭТИ СТРОКИ ДОЛЖНЫ ВЫВЕСТИСЯ В ЛОГИ ПЕРВЫМИ — если их нет, значит, код не запускается
-print("🚀 Запуск бота...")
-print("🐍 Python version:", sys.version)
-print("📍 Executable:", sys.executable)
-print("📂 Текущая директория:", os.getcwd())
-print("📄 Содержимое директории:", os.listdir())
+# 👇 ЭТО ДОЛЖНО ВЫВЕСТИСЬ В ЛОГИ ПЕРВЫМ, ЕСЛИ КОД ЗАПУСТИЛСЯ
+print("🚀 [DEBUG] Запуск run.py...")
+print("🐍 [DEBUG] Python version:", sys.version)
+print("📍 [DEBUG] Executable:", sys.executable)
+print("📂 [DEBUG] Текущая директория:", os.getcwd())
+print("📄 [DEBUG] Файлы в директории:", os.listdir())
 
+# Добавляем текущую папку в путь поиска модулей
 sys.path.insert(0, os.path.dirname(__file__))
 
 try:
+    print("📥 [DEBUG] Пытаемся импортировать bot.main...")
     from bot.main import main
     import asyncio
+    print("✅ [DEBUG] Импорт успешен")
 except Exception as e:
-    print("❌ Ошибка импорта:", e)
+    print("❌ [DEBUG] ОШИБКА ИМПОРТА:", e)
     raise
 
 if __name__ == "__main__":
-    print("🔄 Запускаем asyncio loop...")
+    print("🔄 [DEBUG] Запускаем asyncio.run(main())...")
     asyncio.run(main())
