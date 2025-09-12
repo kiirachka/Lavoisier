@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
+"""
+Запускает бота и HTTP-сервер для health-check
+"""
 import os
 import sys
+import asyncio
+from threading import Thread
 
-# 👇 ЭТО ДОЛЖНО ВЫВЕСТИСЬ В ЛОГИ ПЕРВЫМ, ЕСЛИ КОД ЗАПУСТИЛСЯ
-print("🚀 [DEBUG] Запуск run.py...")
-print("🐍 [DEBUG] Python version:", sys.version)
-print("📍 [DEBUG] Executable:", sys.executable)
-print("📂 [DEBUG] Текущая директория:", os.getcwd())
-print("📄 [DEBUG] Файлы в директории:", os.listdir())
+# Запускаем HTTP-сервер в фоновом потоке ДО импорта бота
+print("🚀 [DOCKER] Запускаем HTTP-сервер для health-check...")
+from http_server import start_http_server
+http_thread = start_http_server()
+print("✅ [DOCKER] HTTP-сервер запущен в фоне")
 
-# Добавляем текущую папку в путь поиска модулей
+# Добавляем путь для импорта бота
 sys.path.insert(0, os.path.dirname(__file__))
 
 try:
-    print("📥 [DEBUG] Пытаемся импортировать bot.main...")
+    print("📥 [DOCKER] Импортируем бота...")
     from bot.main import main
-    import asyncio
-    print("✅ [DEBUG] Импорт успешен")
+    print("✅ [DOCKER] Бот импортирован успешно")
 except Exception as e:
-    print("❌ [DEBUG] ОШИБКА ИМПОРТА:", e)
+    print(f"❌ [DOCKER] Ошибка импорта: {e}")
     raise
 
 if __name__ == "__main__":
-    print("🔄 [DEBUG] Запускаем asyncio.run(main())...")
+    print("🤖 [DOCKER] Запускаем бота...")
     asyncio.run(main())
