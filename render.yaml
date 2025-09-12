@@ -1,7 +1,7 @@
 services:
   - type: web
     name: stellar-bot
-    env: docker
+    env: docker  # ← ЭТО КЛЮЧ! Не "python", а "docker"
     plan: free
     region: oregon
     envVars:
