@@ -4,7 +4,6 @@ import asyncio
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler
 from bot.handlers.start import start
-from http_server import start_http_server  # Импортируем наш HTTP-сервер
 
 # Настройка логирования
 logging.basicConfig(
@@ -29,13 +28,8 @@ async def main() -> None:
     application = ApplicationBuilder().token(token).build()
     application.add_handler(CommandHandler("start", start))
     
-    # Запускаем HTTP сервер для пингов
-    logger.info("Запуск HTTP сервера для health checks...")
-    start_http_server()
-    
     logger.info("Запускаем бота в режиме polling...")
     await application.run_polling()
 
 if __name__ == "__main__":
-    # Запускаем asyncio event loop
     asyncio.run(main())
