@@ -1,8 +1,9 @@
 import os
 import logging
 from dotenv import load_dotenv
-from telegram.ext import ApplicationBuilder
-
+from telegram.ext import ApplicationBuilder, CommandHandler
+# Импортируем наш новый обработчик
+from bot.handlers.start import start
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -34,6 +35,9 @@ def main() -> None:
     else:
         # Локальная разработка (Polling)
         application.run_polling()
+
+ application.add_handler(CommandHandler("start", start))
+
 
 if __name__ == "__main__":
     main()
