@@ -4,8 +4,12 @@
 """
 import os
 import sys
-sys.path.insert(0, os.path.dirname(__file__))
 
+# Выводим версию Python для отладки
+print("Python version:", sys.version)
+print("Python executable:", sys.executable)
+
+sys.path.insert(0, os.path.dirname(__file__))
 from bot.main import main
 import asyncio
 
