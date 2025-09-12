@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m bot.main  # Запускаем бота напрямую
+    startCommand: python run.py  # Используем простой скрипт запуска
     envVars:
       - key: BOT_TOKEN
         sync: false
