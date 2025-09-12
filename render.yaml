@@ -3,7 +3,7 @@ services:
     name: stellar-bot
     env: python
     plan: free
-    runtime: python  # Явно указываем использование Python
+    runtime: python-3.11  # <-- ЯВНО указываем версию!
     buildCommand: pip install -r requirements.txt
     startCommand: python run.py
     envVars:
