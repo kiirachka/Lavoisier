@@ -103,9 +103,14 @@ async def main() -> None:
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
     
+    logger.info("🧹 Сбрасываем все ожидающие обновления...")
+    await application.bot.delete_webhook(drop_pending_updates=True)
+
+    logger.info("⏳ Ждём 5 секунд, чтобы старый инстанс точно завершился...")
+    await asyncio.sleep(5)
+
     logger.info("▶️ Запускаем updater (polling)...")
-    await asyncio.sleep(2)  # ← ДОБАВЬ ЭТУ СТРОЧКУ
-    await application.updater.start_polling()
+    await application.updater.start_polling(drop_pending_updates=True)
     
     logger.info("🚀 Запускаем приложение...")
     await application.start()
