@@ -1,6 +1,6 @@
 # bot/handlers/settings.py
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, MessageHandler, filters
 from bot.database.core import get_supabase
 
 async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -8,14 +8,12 @@ async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_id = update.effective_user.id
     supabase = get_supabase()
     
-    # Получаем текущий статус
     user_data = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
-    if not user_data.data:
+    if not user_data.
         await update.message.reply_text("❌ Ошибка: пользователь не найден.")
         return
         
     can_receive = user_data.data[0]['can_receive_broadcast']
-    
     status_text = "🔕 Рассылка отключена" if not can_receive else "🔔 Рассылка включена"
     
     keyboard = [
@@ -35,22 +33,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     supabase = get_supabase()
     
     if query.data == "toggle_broadcast":
-        # Получаем текущий статус
         user_data = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
-        if not user_data.data:
+        if not user_data.
             await query.edit_message_text("❌ Ошибка: пользователь не найден.")
             return
             
         current_status = user_data.data[0]['can_receive_broadcast']
         new_status = not current_status
+        
+        supabase.table('users').update({'can_receive_broadcast': new_status}).eq('user_id', user_id).execute()
+        status_text = "🔕 Рассылка отключена" if not new_status else "🔔 Рассылка включена"
+        await query.edit_message_text(f"✅ {status_text}")
 
-        async def handle_settings_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# Новый обработчик для текстовой кнопки
+async def handle_settings_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает текстовое сообщение '⚙️ Настройки'."""
     text = update.message.text.strip()
     if text in ["⚙️ Настройки", "Настройки", "настройки", "⚙️ настройки"]:
         await settings_menu(update, context)
-        
-        supabase.table('users').update({'can_receive_broadcast': new_status}).eq('user_id', user_id).execute()
-        
-        status_text = "🔕 Рассылка отключена" if not new_status else "🔔 Рассылка включена"
-        await query.edit_message_text(f"✅ {status_text}")
