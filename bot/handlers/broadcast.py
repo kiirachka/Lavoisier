@@ -22,7 +22,7 @@ async def _send_message_to_users(context, users, original_msg=None, fallback_tex
             if original_msg:
                 # Обработка фото
                 if original_msg.photo:
-                    photo = original_msg.photo[-1].file_id  # Берём фото максимального качества
+                    photo = original_msg.photo[-1].file_id
                     caption = original_msg.caption or ""
                     await context.bot.send_photo(
                         chat_id=user['user_id'],
@@ -67,11 +67,9 @@ async def _send_message_to_users(context, users, original_msg=None, fallback_tex
                         parse_mode=original_msg.parse_mode
                     )
                 else:
-                    # Если тип сообщения не поддерживается — пропускаем
                     logger.warning(f"Не поддерживаемый тип сообщения для пользователя {user['user_id']}")
                     continue
             else:
-                # Отправка обычного текста
                 await context.bot.send_message(chat_id=user['user_id'], text=fallback_text)
             sent_count += 1
         except Exception as e:
@@ -81,9 +79,9 @@ async def _send_message_to_users(context, users, original_msg=None, fallback_tex
     return sent_count, failed_count
 
 async def broadcast_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Рассылка всем с поддержкой фото, документов, стикеров, видео, голосовых и форматирования."""
+    """Рассылка всем."""
     if update.effective_user.id not in get_admin_ids():
-        return  # Не отвечаем, чтобы не светить команду
+        return
 
     supabase = get_supabase()
     response = supabase.table('users').select('user_id').eq('can_receive_broadcast', True).execute()
@@ -99,7 +97,7 @@ async def broadcast_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if not context.args:
             await update.message.reply_text(
                 "📌 Использование:\n"
-                "1. Ответьте на сообщение (с текстом, фото, документом и т.д.) командой /broadcast_all\n"
+                "1. Ответьте на сообщение → /broadcast_all\n"
                 "2. Или: /broadcast_all <текст>"
             )
             return
