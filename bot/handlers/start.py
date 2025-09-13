@@ -1,8 +1,9 @@
+# bot/handlers/start.py
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
-from bot.database.core import create_user_if_not_exists  # Импортируем новую функцию
+from bot.database.core import create_user_if_not_exists
 
-# Клавиатура главного меню с эмодзи
+# Обновлённая клавиатура
 main_keyboard = [
     ["🤖 О боте", "📝 Анкета", "📨 Обращение"],
     ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
@@ -11,7 +12,6 @@ reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает команду /start и показывает главное меню."""
-    # Регистрируем/проверяем пользователя в БД
     user = update.effective_user
     await create_user_if_not_exists(user)
     
