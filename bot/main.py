@@ -58,26 +58,49 @@ if missing_vars:
     logger.critical("🚨 КРИТИЧЕСКАЯ ОШИБКА: Не хватает переменных окружения!")
     sys.exit(1)
 
+
 async def main() -> None:
     """Запускает бота."""
-    logger.info("🔧 [BOT] Создаем Application...")
-    
     token = os.getenv('BOT_TOKEN')
+    
+    logger.info("🔧 [BOT] Создаем Application...")
     application = ApplicationBuilder().token(token).build()
     
     logger.info("➕ Добавляем обработчик команды /start")
     application.add_handler(CommandHandler("start", start))
     
-    logger.info("▶️ [BOT] Запускаем polling...")
+    logger.info("🔄 Инициализируем приложение...")
+    await application.initialize()
+    
+    logger.info("▶️ Запускаем updater (polling)...")
+    await application.updater.start_polling()
+    
+    logger.info("🚀 Запускаем приложение...")
+    await application.start()
+    
+    logger.info("💤 Бот запущен и работает. Ожидание завершения...")
     try:
-        await application.run_polling()
-    except Exception as e:
-        logger.exception("💥 КРИТИЧЕСКАЯ ОШИБКА при запуске polling:")
-        raise
+        # Ждём завершения — например, по Ctrl+C
+        await asyncio.Event().wait()
+    except KeyboardInterrupt:
+        logger.info("🛑 Получен сигнал завершения. Останавливаем бота...")
+    finally:
+        logger.info("⏹️ Останавливаем updater...")
+        await application.updater.stop()
+        
+        logger.info("⏹️ Останавливаем приложение...")
+        await application.stop()
+        
+        logger.info("🧹 Закрываем приложение...")
+        await application.shutdown()
+        
+        logger.info("✅ Бот успешно остановлен.")
+
 
 if __name__ == "__main__":
     logger.info("🏁 Запуск основного цикла...")
     try:
+        # Используем run() — он создаёт новый event loop
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("👋 Бот остановлен вручную.")
