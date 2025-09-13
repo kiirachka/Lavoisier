@@ -4,7 +4,7 @@ import sys
 import logging
 import asyncio
 from dotenv import load_dotenv
-from telegram.ext import ApplicationBuilder, CommandHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler
 from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
