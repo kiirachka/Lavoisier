@@ -43,6 +43,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             
         current_status = user_data.data[0]['can_receive_broadcast']
         new_status = not current_status
+
+        async def handle_settings_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обрабатывает текстовое сообщение '⚙️ Настройки'."""
+    text = update.message.text.strip()
+    if text in ["⚙️ Настройки", "Настройки", "настройки", "⚙️ настройки"]:
+        await settings_menu(update, context)
         
         supabase.table('users').update({'can_receive_broadcast': new_status}).eq('user_id', user_id).execute()
         
