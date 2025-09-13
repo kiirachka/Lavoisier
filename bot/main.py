@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler
 from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler
+from bot.handlers.broadcast import broadcast_all
 
 # Настройка логирования — ВСЕГДА в начале
 logging.basicConfig(
@@ -72,6 +73,8 @@ async def main() -> None:
 
     application.add_handler(CommandHandler("settings", settings_menu))
 application.add_handler(CallbackQueryHandler(button_handler))
+
+application.add_handler(CommandHandler("рассылка_всем", broadcast_all))
     
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
