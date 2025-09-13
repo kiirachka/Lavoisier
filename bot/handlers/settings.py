@@ -1,17 +1,30 @@
+# bot/handlers/settings.py
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import ContextTypes, CallbackQueryHandler
+from telegram.ext import ContextTypes
 from bot.database.core import get_supabase
 
 async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Показывает меню настроек."""
+    user_id = update.effective_user.id
+    supabase = get_supabase()
+    
+    # Получаем текущий статус
+    user_data = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
+    if not user_data.data:
+        await update.message.reply_text("❌ Ошибка: пользователь не найден.")
+        return
+        
+    can_receive = user_data.data[0]['can_receive_broadcast']
+    
+    status_text = "🔕 Рассылка отключена" if not can_receive else "🔔 Рассылка включена"
+    
     keyboard = [
-        [InlineKeyboardButton("🔕 Отключить рассылку", callback_data="toggle_broadcast_off")],
-        [InlineKeyboardButton("🔔 Включить рассылку", callback_data="toggle_broadcast_on")],
-        [InlineKeyboardButton("⬅️ Назад в меню", callback_data="back_to_main")]
+        [InlineKeyboardButton("🔕 Отключить рассылку" if can_receive else "🔔 Включить рассылку", 
+                             callback_data="toggle_broadcast")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_text("⚙️ Меню настроек:", reply_markup=reply_markup)
+    await update.message.reply_text(f"⚙️ {status_text}\nВыберите действие:", reply_markup=reply_markup)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает нажатия кнопок в настройках."""
@@ -21,15 +34,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = update.effective_user.id
     supabase = get_supabase()
     
-    if query.data == "toggle_broadcast_off":
-        supabase.table('users').update({'can_receive_broadcast': False}).eq('user_id', user_id).execute()
-        await query.edit_message_text("🔕 Рассылка отключена. Вы не будете получать общие сообщения от бота.")
+    if query.data == "toggle_broadcast":
+        # Получаем текущий статус
+        user_data = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
+        if not user_data.data:
+            await query.edit_message_text("❌ Ошибка: пользователь не найден.")
+            return
+            
+        current_status = user_data.data[0]['can_receive_broadcast']
+        new_status = not current_status
         
-    elif query.data == "toggle_broadcast_on":
-        supabase.table('users').update({'can_receive_broadcast': True}).eq('user_id', user_id).execute()
-        await query.edit_message_text("🔔 Рассылка включена!")
+        supabase.table('users').update({'can_receive_broadcast': new_status}).eq('user_id', user_id).execute()
         
-    elif query.data == "back_to_main":
-        # Импортируем клавиатуру из start.py
-        from bot.handlers.start import reply_markup
-        await query.edit_message_text("Выбери пункт в меню ниже ↓", reply_markup=reply_markup)
+        status_text = "🔕 Рассылка отключена" if not new_status else "🔔 Рассылка включена"
+        await query.edit_message_text(f"✅ {status_text}")
