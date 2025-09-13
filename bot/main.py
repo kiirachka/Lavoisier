@@ -8,7 +8,7 @@ import signal
 from telegram.ext import MessageHandler, filters
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
-from telegram import error as telegram_error  # ← ДОБАВЛЕНО: для обработки Conflict
+from telegram import error as telegram_error
 from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler, handle_settings_text
 from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
@@ -21,21 +21,16 @@ def signal_handler():
     logger.info("🛑 Получен системный сигнал. Завершаем бота...")
     sys.exit(0)
 
-# Регистрируем обработчики сигналов
 signal.signal(signal.SIGINT, lambda s, f: signal_handler())
 signal.signal(signal.SIGTERM, lambda s, f: signal_handler())
 
-# Настройка логирования — ВСЕГДА в начале
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
-# Отладка: Выводим информацию о среде
 logger.info("=" * 60)
 logger.info("🚀 [BOT] НАЧАЛО ИНИЦИАЛИЗАЦИИ БОТА")
 logger.info("=" * 60)
@@ -43,14 +38,12 @@ logger.info(f"🐍 Python версия: {sys.version}")
 logger.info(f"📁 Текущая директория: {os.getcwd()}")
 logger.info(f"📄 Файлы в директории: {os.listdir()}")
 
-# Проверяем наличие папки bot
 if os.path.exists("bot"):
     logger.info(f"📁 bot/ содержимое: {os.listdir('bot')}")
 else:
     logger.error("❌ Папка 'bot' не найдена!")
     sys.exit(1)
 
-# Загружаем .env
 dotenv_path = '.env'
 logger.info(f"📥 Загружаем переменные окружения из: {dotenv_path}")
 if not os.path.exists(dotenv_path):
@@ -58,7 +51,6 @@ if not os.path.exists(dotenv_path):
 
 load_dotenv(dotenv_path=dotenv_path)
 
-# Проверяем ключевые переменные
 REQUIRED_VARS = ['BOT_TOKEN', 'SUPABASE_URL', 'SUPABASE_KEY']
 missing_vars = []
 
@@ -102,19 +94,16 @@ async def main() -> None:
     application.add_handler(CommandHandler("broadcast_city", broadcast_city))
     application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
 
-    # Обработчик текстовых сообщений для кнопки "Настройки"
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
     
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
     
-    # ================= УПРАВЛЕНИЕ ИНСТАНСАМИ ЧЕРЕЗ SUPABASE =================
+    # Управление инстансами через Supabase
     INSTANCE_ID = str(uuid.uuid4())
     supabase = get_supabase()
-
     logger.info(f"🔑 Этот инстанс имеет ID: {INSTANCE_ID}")
 
-    # Деактивируем все предыдущие активные инстансы
     logger.info("🔌 Деактивируем все предыдущие инстансы бота...")
     try:
         supabase.table('bot_instances').update({'is_active': False}).eq('is_active', True).execute()
@@ -122,7 +111,6 @@ async def main() -> None:
     except Exception as e:
         logger.error(f"❌ Ошибка при деактивации старых инстансов: {e}")
 
-    # Регистрируем текущий инстанс как активный
     logger.info("✅ Регистрируем текущий инстанс как активный...")
     try:
         supabase.table('bot_instances').insert({
@@ -132,53 +120,50 @@ async def main() -> None:
         logger.info("✅ Текущий инстанс успешно зарегистрирован.")
     except Exception as e:
         logger.error(f"❌ Ошибка при регистрации текущего инстанса: {e}")
-    # ======================================================================
 
-    # ================= ПРИНУДИТЕЛЬНЫЙ СБРОС СЕССИЙ TELEGRAM API =================
+    # Принудительный сброс сессий Telegram API
     logger.info("🧹 Принудительный сброс всех сессий Telegram API...")
     try:
         updates = await application.bot.get_updates(offset=-1, timeout=1)
-        logger.info(f"✅ Получено {len(updates)} обновлений при сбросе (это нормально).")
+        logger.info(f"✅ Получено {len(updates)} обновлений при сбросе.")
     except Exception as e:
-        logger.warning(f"⚠️ Не удалось сбросить сессии через get_updates(offset=-1): {e}")
+        logger.warning(f"⚠️ Не удалось сбросить сессии: {e}")
 
-    logger.info("🧹 Сбрасываем webhook и ожидающие обновления...")
+    logger.info("🧹 Сбрасываем webhook...")
     try:
         await application.bot.delete_webhook(drop_pending_updates=True)
     except Exception as e:
         logger.warning(f"⚠️ Не удалось сбросить webhook: {e}")
 
-    # ================= ЗАПУСК POLLING С ПОВТОРНЫМИ ПОПЫТКАМИ =================
- # ================= ЗАПУСК POLLING С ПОВТОРНЫМИ ПОПЫТКАМИ И ДЛИННОЙ ПАУЗОЙ =================
-polling_success = False
-for attempt in range(5):  # ← Было 3, теперь 5 попыток
-    logger.info(f"⏳ Попытка {attempt + 1}: ждём 30 секунд перед запуском polling...")
-    await asyncio.sleep(30)  # ← Было 10, теперь 30 секунд
-    
-    try:
-        logger.info("▶️ Пробуем запустить updater...")
-        await application.updater.start_polling(drop_pending_updates=True)
-        logger.info("✅ Polling успешно запущен!")
-        polling_success = True
-        break
-    except telegram_error.Conflict:
-        logger.warning("⚠️ Конфликт при запуске polling, повторяем сброс...")
+    # Запуск polling с повторными попытками
+    polling_success = False
+    for attempt in range(5):
+        logger.info(f"⏳ Попытка {attempt + 1}: ждём 30 секунд перед запуском polling...")
+        await asyncio.sleep(30)  # ← ТЕПЕРЬ ВНУТРИ async def main() — ВСЁ ВЕРНО!
+        
         try:
-            # Принудительный сброс через get_updates(offset=-1)
-            updates = await application.bot.get_updates(offset=-1, timeout=1)
-            logger.info(f"✅ Сброшено {len(updates)} обновлений.")
+            logger.info("▶️ Пробуем запустить updater...")
+            await application.updater.start_polling(drop_pending_updates=True)
+            logger.info("✅ Polling успешно запущен!")
+            polling_success = True
+            break
+        except telegram_error.Conflict:
+            logger.warning("⚠️ Конфликт при запуске polling, повторяем сброс...")
+            try:
+                updates = await application.bot.get_updates(offset=-1, timeout=1)
+                logger.info(f"✅ Сброшено {len(updates)} обновлений.")
+            except Exception as e:
+                logger.error(f"❌ Ошибка при повторном сбросе: {e}")
+            if attempt == 4:
+                logger.critical("💥 Не удалось запустить polling после 5 попыток!")
+                raise
         except Exception as e:
-            logger.error(f"❌ Ошибка при повторном сбросе: {e}")
-        if attempt == 4:  # ← Было 2, теперь 4
-            logger.critical("💥 Не удалось запустить polling после 5 попыток!")
+            logger.critical(f"💥 Неизвестная ошибка: {e}")
             raise
-    except Exception as e:
-        logger.critical(f"💥 Неизвестная ошибка при запуске polling: {e}")
-        raise
 
-if not polling_success:
-    logger.critical("💥 Не удалось запустить polling после всех попыток!")
-    raise RuntimeError("Polling failed to start")
+    if not polling_success:
+        logger.critical("💥 Не удалось запустить polling!")
+        raise RuntimeError("Polling failed")
 
     logger.info("🚀 Запускаем приложение...")
     await application.start()
@@ -189,13 +174,12 @@ if not polling_success:
     except KeyboardInterrupt:
         logger.info("🛑 Получен сигнал завершения. Останавливаем бота...")
     finally:
-        # Деактивируем текущий инстанс
         logger.info("🔌 Деактивируем текущий инстанс...")
         try:
             supabase.table('bot_instances').update({'is_active': False}).eq('instance_id', INSTANCE_ID).execute()
             logger.info("✅ Текущий инстанс деактивирован.")
         except Exception as e:
-            logger.warning(f"⚠️ Не удалось деактивировать текущий инстанс: {e}")
+            logger.warning(f"⚠️ Не удалось деактивировать инстанс: {e}")
 
         logger.info("⏹️ Останавливаем updater...")
         try:
@@ -225,5 +209,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("👋 Бот остановлен вручную.")
     except Exception as e:
-        logger.exception("💥 Непредвиденная ошибка верхнего уровня:")
+        logger.exception("💥 Непредвиденная ошибка:")
         sys.exit(1)
