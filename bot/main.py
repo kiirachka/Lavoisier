@@ -3,26 +3,24 @@ import os
 import sys
 import logging
 import asyncio
+import uuid
+import signal
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler
 from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
 from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
-import uuid
 from bot.database.core import get_supabase
-import signal
 
 def signal_handler():
     """Обработчик сигналов для graceful shutdown."""
     logger.info("🛑 Получен системный сигнал. Завершаем бота...")
-    # Мы не можем здесь вызвать await, поэтому просто выходим — asyncio.run() обработает это
     sys.exit(0)
 
 # Регистрируем обработчики сигналов
 signal.signal(signal.SIGINT, lambda s, f: signal_handler())
 signal.signal(signal.SIGTERM, lambda s, f: signal_handler())
-
 
 # Настройка логирования — ВСЕГДА в начале
 logging.basicConfig(
@@ -67,7 +65,6 @@ for var in REQUIRED_VARS:
         logger.error(f"❌ Переменная {var} не установлена!")
         missing_vars.append(var)
     else:
-        # Для ключей выводим только начало
         display_value = value[:10] + "..." if len(value) > 10 else value
         logger.info(f"✅ {var} = {display_value}")
 
@@ -105,41 +102,90 @@ async def main() -> None:
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
     
+    # ================= ДОБАВЛЕНО: УПРАВЛЕНИЕ ИНСТАНСАМИ ЧЕРЕЗ SUPABASE =================
+    INSTANCE_ID = str(uuid.uuid4())
+    supabase = get_supabase()
+
+    logger.info(f"🔑 Этот инстанс имеет ID: {INSTANCE_ID}")
+
+    # Деактивируем все предыдущие активные инстансы
+    logger.info("🔌 Деактивируем все предыдущие инстансы бота...")
+    try:
+        supabase.table('bot_instances').update({'is_active': False}).eq('is_active', True).execute()
+        logger.info("✅ Все предыдущие инстансы деактивированы.")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при деактивации старых инстансов: {e}")
+
+    # Регистрируем текущий инстанс как активный
+    logger.info("✅ Регистрируем текущий инстанс как активный...")
+    try:
+        supabase.table('bot_instances').insert({
+            'instance_id': INSTANCE_ID,
+            'is_active': True
+        }).execute()
+        logger.info("✅ Текущий инстанс успешно зарегистрирован.")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при регистрации текущего инстанса: {e}")
+        # Не останавливаем бота — продолжаем работу, но с предупреждением
+    # ==============================================================================
+
     logger.info("🧹 Сбрасываем все ожидающие обновления...")
-    await application.bot.delete_webhook(drop_pending_updates=True)
+    try:
+        await application.bot.delete_webhook(drop_pending_updates=True)
+    except Exception as e:
+        logger.warning(f"⚠️ Не удалось сбросить webhook: {e}")
 
     logger.info("⏳ Ждём 5 секунд, чтобы старый инстанс точно завершился...")
     await asyncio.sleep(5)
 
     logger.info("▶️ Запускаем updater (polling)...")
-    await application.updater.start_polling(drop_pending_updates=True)
-    
+    try:
+        await application.updater.start_polling(drop_pending_updates=True)
+    except Exception as e:
+        logger.critical(f"❌ Не удалось запустить polling: {e}")
+        raise
+
     logger.info("🚀 Запускаем приложение...")
     await application.start()
     
     logger.info("💤 Бот запущен и работает. Ожидание завершения...")
     try:
-        # Ждём завершения — например, по Ctrl+C
         await asyncio.Event().wait()
     except KeyboardInterrupt:
         logger.info("🛑 Получен сигнал завершения. Останавливаем бота...")
     finally:
+        # Деактивируем текущий инстанс
+        logger.info("🔌 Деактивируем текущий инстанс...")
+        try:
+            supabase.table('bot_instances').update({'is_active': False}).eq('instance_id', INSTANCE_ID).execute()
+            logger.info("✅ Текущий инстанс деактивирован.")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось деактивировать текущий инстанс: {e}")
+
         logger.info("⏹️ Останавливаем updater...")
-        await application.updater.stop()
-        
+        try:
+            await application.updater.stop()
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка при остановке updater: {e}")
+
         logger.info("⏹️ Останавливаем приложение...")
-        await application.stop()
-        
+        try:
+            await application.stop()
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка при остановке приложения: {e}")
+
         logger.info("🧹 Закрываем приложение...")
-        await application.shutdown()
-        
+        try:
+            await application.shutdown()
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка при закрытии приложения: {e}")
+
         logger.info("✅ Бот успешно остановлен.")
 
 
 if __name__ == "__main__":
     logger.info("🏁 Запуск основного цикла...")
     try:
-        # Используем run() — он создаёт новый event loop
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("👋 Бот остановлен вручную.")
