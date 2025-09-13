@@ -9,6 +9,8 @@ from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler
 from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
 from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
+import uuid
+from bot.database.core import get_supabase
 import signal
 
 def signal_handler():
