@@ -9,7 +9,7 @@ async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     supabase = get_supabase()
     
     user_data = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
-    if not user_data.
+    if not user_data.data:  # ← ИСПРАВЛЕНО: было user_data.
         await update.message.reply_text("❌ Ошибка: пользователь не найден.")
         return
         
@@ -34,7 +34,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     if query.data == "toggle_broadcast":
         user_data = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
-        if not user_data.
+        if not user_data.data:  # ← ИСПРАВЛЕНО: было user_data.
             await query.edit_message_text("❌ Ошибка: пользователь не найден.")
             return
             
