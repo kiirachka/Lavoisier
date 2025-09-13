@@ -5,6 +5,7 @@ import logging
 import asyncio
 import uuid
 import signal
+from telegram.ext import MessageHandler, filters
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 from bot.handlers.start import start
