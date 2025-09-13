@@ -6,6 +6,7 @@ import asyncio
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler
 from bot.handlers.start import start
+from bot.handlers.settings import settings_menu, button_handler
 
 # Настройка логирования — ВСЕГДА в начале
 logging.basicConfig(
@@ -68,6 +69,9 @@ async def main() -> None:
     
     logger.info("➕ Добавляем обработчик команды /start")
     application.add_handler(CommandHandler("start", start))
+
+    application.add_handler(CommandHandler("settings", settings_menu))
+application.add_handler(CallbackQueryHandler(button_handler))
     
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
