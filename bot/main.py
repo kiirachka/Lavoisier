@@ -8,6 +8,7 @@ import signal
 from telegram.ext import MessageHandler, filters
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
+from telegram import error as telegram_error  # ← ДОБАВЛЕНО: для обработки Conflict
 from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler, handle_settings_text
 from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
@@ -107,7 +108,7 @@ async def main() -> None:
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
     
-    # ================= ДОБАВЛЕНО: УПРАВЛЕНИЕ ИНСТАНСАМИ ЧЕРЕЗ SUPABASE =================
+    # ================= УПРАВЛЕНИЕ ИНСТАНСАМИ ЧЕРЕЗ SUPABASE =================
     INSTANCE_ID = str(uuid.uuid4())
     supabase = get_supabase()
 
@@ -131,24 +132,51 @@ async def main() -> None:
         logger.info("✅ Текущий инстанс успешно зарегистрирован.")
     except Exception as e:
         logger.error(f"❌ Ошибка при регистрации текущего инстанса: {e}")
-        # Не останавливаем бота — продолжаем работу, но с предупреждением
-    # ==============================================================================
+    # ======================================================================
 
-    logger.info("🧹 Сбрасываем все ожидающие обновления...")
+    # ================= ПРИНУДИТЕЛЬНЫЙ СБРОС СЕССИЙ TELEGRAM API =================
+    logger.info("🧹 Принудительный сброс всех сессий Telegram API...")
+    try:
+        updates = await application.bot.get_updates(offset=-1, timeout=1)
+        logger.info(f"✅ Получено {len(updates)} обновлений при сбросе (это нормально).")
+    except Exception as e:
+        logger.warning(f"⚠️ Не удалось сбросить сессии через get_updates(offset=-1): {e}")
+
+    logger.info("🧹 Сбрасываем webhook и ожидающие обновления...")
     try:
         await application.bot.delete_webhook(drop_pending_updates=True)
     except Exception as e:
         logger.warning(f"⚠️ Не удалось сбросить webhook: {e}")
 
-    logger.info("⏳ Ждём 5 секунд, чтобы старый инстанс точно завершился...")
-    await asyncio.sleep(5)
+    # ================= ЗАПУСК POLLING С ПОВТОРНЫМИ ПОПЫТКАМИ =================
+    polling_success = False
+    for attempt in range(3):
+        logger.info(f"⏳ Попытка {attempt + 1}: ждём 10 секунд перед запуском polling...")
+        await asyncio.sleep(10)
+        
+        try:
+            logger.info("▶️ Пробуем запустить updater...")
+            await application.updater.start_polling(drop_pending_updates=True)
+            logger.info("✅ Polling успешно запущен!")
+            polling_success = True
+            break
+        except telegram_error.Conflict:
+            logger.warning("⚠️ Конфликт при запуске polling, повторяем сброс...")
+            try:
+                updates = await application.bot.get_updates(offset=-1, timeout=1)
+                logger.info(f"✅ Сброшено {len(updates)} обновлений.")
+            except Exception as e:
+                logger.error(f"❌ Ошибка при повторном сбросе: {e}")
+            if attempt == 2:
+                logger.critical("💥 Не удалось запустить polling после 3 попыток!")
+                raise
+        except Exception as e:
+            logger.critical(f"💥 Неизвестная ошибка при запуске polling: {e}")
+            raise
 
-    logger.info("▶️ Запускаем updater (polling)...")
-    try:
-        await application.updater.start_polling(drop_pending_updates=True)
-    except Exception as e:
-        logger.critical(f"❌ Не удалось запустить polling: {e}")
-        raise
+    if not polling_success:
+        logger.critical("💥 Не удалось запустить polling после всех попыток!")
+        raise RuntimeError("Polling failed to start")
 
     logger.info("🚀 Запускаем приложение...")
     await application.start()
