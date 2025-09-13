@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler
-from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
 from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
+from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
 
 # Настройка логирования — ВСЕГДА в начале
 logging.basicConfig(
@@ -75,11 +75,6 @@ async def main() -> None:
     application.add_handler(CommandHandler("settings", settings_menu))
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    application.add_handler(CommandHandler("broadcast_all", broadcast_all))
-    application.add_handler(CommandHandler("broadcast_squad", broadcast_squad))
-    application.add_handler(CommandHandler("broadcast_city", broadcast_city))
-    application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
-
     application.add_handler(CommandHandler("list_all", list_all_users))
     application.add_handler(CommandHandler("list_squad", list_squad))
     application.add_handler(CommandHandler("list_city", list_city))
@@ -87,6 +82,11 @@ async def main() -> None:
     application.add_handler(CommandHandler("add_to_city", add_to_city))
     application.add_handler(CommandHandler("remove_from_squad", remove_from_squad))
     application.add_handler(CommandHandler("remove_from_city", remove_from_city))
+
+    application.add_handler(CommandHandler("broadcast_all", broadcast_all))
+    application.add_handler(CommandHandler("broadcast_squad", broadcast_squad))
+    application.add_handler(CommandHandler("broadcast_city", broadcast_city))
+    application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
     
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
