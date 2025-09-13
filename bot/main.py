@@ -92,6 +92,7 @@ async def main() -> None:
     await application.initialize()
     
     logger.info("▶️ Запускаем updater (polling)...")
+    await asyncio.sleep(2)  # ← ДОБАВЬ ЭТУ СТРОЧКУ
     await application.updater.start_polling()
     
     logger.info("🚀 Запускаем приложение...")
