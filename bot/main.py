@@ -72,7 +72,7 @@ async def main() -> None:
     application.add_handler(CommandHandler("start", start))
 
     application.add_handler(CommandHandler("settings", settings_menu))
-    application.add_handler(CallbackQueryHandler(button_handler)
+    application.add_handler(CallbackQueryHandler(button_handler))
 
     application.add_handler(CommandHandler("рассылка_всем", broadcast_all))
     application.add_handler(CommandHandler("рассылка_сквад", broadcast_squad))
