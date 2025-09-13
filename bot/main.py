@@ -74,10 +74,10 @@ async def main() -> None:
     application.add_handler(CommandHandler("settings", settings_menu))
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    application.add_handler(CommandHandler("рассылка_всем", broadcast_all))
-    application.add_handler(CommandHandler("рассылка_сквад", broadcast_squad))
-    application.add_handler(CommandHandler("рассылка_город", broadcast_city))
-    application.add_handler(CommandHandler("рассылка_старли", broadcast_starly))
+    application.add_handler(CommandHandler("broadcast_all", broadcast_all))
+    application.add_handler(CommandHandler("broadcast_squad", broadcast_squad))
+    application.add_handler(CommandHandler("broadcast_city", broadcast_city))
+    application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
                             
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
