@@ -9,10 +9,11 @@ from telegram.ext import MessageHandler, filters
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 from bot.handlers.start import start
-from bot.handlers.settings import settings_menu, button_handler
+from bot.handlers.settings import settings_menu, button_handler, handle_settings_text
 from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
 from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
 from bot.database.core import get_supabase
+
 
 def signal_handler():
     """Обработчик сигналов для graceful shutdown."""
@@ -99,6 +100,9 @@ async def main() -> None:
     application.add_handler(CommandHandler("broadcast_squad", broadcast_squad))
     application.add_handler(CommandHandler("broadcast_city", broadcast_city))
     application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
+
+    # Обработчик текстовых сообщений для кнопки "Настройки"
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
     
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
