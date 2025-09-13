@@ -9,6 +9,18 @@ from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler
 from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
 from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
+import signal
+
+def signal_handler():
+    """Обработчик сигналов для graceful shutdown."""
+    logger.info("🛑 Получен системный сигнал. Завершаем бота...")
+    # Мы не можем здесь вызвать await, поэтому просто выходим — asyncio.run() обработает это
+    sys.exit(0)
+
+# Регистрируем обработчики сигналов
+signal.signal(signal.SIGINT, lambda s, f: signal_handler())
+signal.signal(signal.SIGTERM, lambda s, f: signal_handler())
+
 
 # Настройка логирования — ВСЕГДА в начале
 logging.basicConfig(
