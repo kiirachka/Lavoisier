@@ -126,12 +126,12 @@ async def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
     # Автоочистка: удаляем инстансы старше 1 часа
-logger.info("🧹 Очищаем старые инстансы (старше 1 часа)...")
-try:
-    supabase.table('bot_instances').delete().lt('started_at', 'now() - interval \'1 hour\'').execute()
-    logger.info("✅ Старые инстансы удалены.")
-except Exception as e:
-    logger.error(f"❌ Ошибка при очистке старых инстансов: {e}")
+    logger.info("🧹 Очищаем старые инстансы (старше 1 часа)...")
+    try:
+        supabase.table('bot_instances').delete().lt('started_at', 'now() - interval \'1 hour\'').execute()
+        logger.info("✅ Старые инстансы удалены.")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при очистке старых инстансов: {e}")
     
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
