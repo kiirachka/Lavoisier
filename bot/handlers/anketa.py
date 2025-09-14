@@ -21,6 +21,7 @@ def validate_text(text: str) -> bool:
     return bool(re.match(allowed_pattern, text))
 
 async def start_application(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f"📝 Пользователь {update.effective_user.id} начал заполнение анкеты")
     """Начинает процесс заполнения анкеты."""
     user_id = update.effective_user.id
     supabase = get_supabase()
