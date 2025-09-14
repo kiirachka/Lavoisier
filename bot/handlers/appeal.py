@@ -68,7 +68,7 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     supabase = get_supabase()
     response = supabase.table('temp_appeals').select('*').eq('user_id', user_id).execute()
-    if not response.
+    if not response.data:  # ← ИСПРАВЛЕНО: было response.
         await update.message.reply_text("❌ Ошибка: данные не найдены.")
         return ConversationHandler.END
     
