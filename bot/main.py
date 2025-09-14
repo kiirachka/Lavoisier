@@ -14,8 +14,8 @@ from bot.handlers.settings import settings_menu, button_handler, handle_settings
 from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
 from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
 from bot.database.core import get_supabase
-from bot.handlers.anketa import start_application, receive_name, receive_age, receive_game_nickname, receive_why_join, cancel
-from bot.handlers.appeal import start_appeal, receive_user_type, receive_message, cancel_appeal
+from bot.handlers.anketa import start_application, receive_name, receive_age, receive_game_nickname, receive_why_join, cancel, NAME, AGE, GAME_NICKNAME, WHY_JOIN
+from bot.handlers.appeal import start_appeal, receive_user_type, receive_message, cancel_appeal, USER_TYPE, MESSAGE
 from telegram.ext import ConversationHandler
 
 
