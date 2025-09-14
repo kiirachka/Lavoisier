@@ -81,6 +81,31 @@ async def main() -> None:
     logger.info("➕ Добавляем обработчик команды /start")
     application.add_handler(CommandHandler("start", start))
 
+# 1. Сначала — ConversationHandler для анкеты
+application.add_handler(ConversationHandler(
+    entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
+    states={
+        NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name)],
+        AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_age)],
+        GAME_NICKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_game_nickname)],
+        WHY_JOIN: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_why_join)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel)]
+))
+
+# 2. Потом — ConversationHandler для обращения
+application.add_handler(ConversationHandler(
+    entry_points=[MessageHandler(filters.Regex("^📨 Обращение$"), start_appeal)],
+    states={
+        USER_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_user_type)],
+        MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel_appeal)]
+))
+
+# 3. В конце — обработчик для "Настройки"
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
+
     application.add_handler(CommandHandler("settings", settings_menu))
     application.add_handler(CallbackQueryHandler(button_handler))
 
@@ -99,54 +124,33 @@ async def main() -> None:
 
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
-# ... внутри async def main() ...
 
-# Сначала регистрируем ConversationHandler для анкеты и обращения
-    application.add_handler(ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
-        states={
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name)],
-            AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_age)],
-            GAME_NICKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_game_nickname)],
-            WHY_JOIN: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_why_join)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)]
-    ))
+    logger.info("🔄 Инициализируем приложение...")
+    await application.initialize()
 
-    application.add_handler(ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^📨 Обращение$"), start_appeal)],
-        states={
-            USER_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_user_type)],
-            MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel_appeal)]
-    ))
+# Создаём подключение к Supabase — ДОБАВЛЕНО
+    supabase = get_supabase()
 
-# Потом — обработчик для кнопки "Настройки"
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
-
-    # Автоочистка: удаляем инстансы старше 1 часа
+# Автоочистка: удаляем инстансы старше 1 часа — ДОБАВЛЕНО
     logger.info("🧹 Очищаем старые инстансы (старше 1 часа)...")
     try:
         supabase.table('bot_instances').delete().lt('started_at', 'now() - interval \'1 hour\'').execute()
         logger.info("✅ Старые инстансы удалены.")
     except Exception as e:
         logger.error(f"❌ Ошибка при очистке старых инстансов: {e}")
-    
-    logger.info("🔄 Инициализируем приложение...")
-    await application.initialize()
-    
+
+# Управление инстансами
     INSTANCE_ID = str(uuid.uuid4())
-    supabase = get_supabase()
     logger.info(f"🔑 Этот инстанс имеет ID: {INSTANCE_ID}")
 
+# Деактивируем все предыдущие инстансы
     logger.info("🔌 Деактивируем все предыдущие инстансы бота...")
     try:
         supabase.table('bot_instances').update({'is_active': False}).eq('is_active', True).execute()
         logger.info("✅ Все предыдущие инстансы деактивированы.")
     except Exception as e:
         logger.error(f"❌ Ошибка при деактивации старых инстансов: {e}")
-
+    
     logger.info("✅ Регистрируем текущий инстанс как активный...")
     try:
         supabase.table('bot_instances').insert({
