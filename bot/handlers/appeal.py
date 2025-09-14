@@ -12,6 +12,7 @@ from bot.handlers.anketa import USER_TYPE, MESSAGE, validate_text
 logger = logging.getLogger(__name__)
 
 async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f"📨 Пользователь {update.effective_user.id} начал заполнение обращения")
     """Начинает процесс заполнения обращения."""
     user_id = update.effective_user.id
     supabase = get_supabase()
