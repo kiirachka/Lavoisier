@@ -14,6 +14,9 @@ from bot.handlers.settings import settings_menu, button_handler, handle_settings
 from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
 from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
 from bot.database.core import get_supabase
+from bot.handlers.anketa import start_application, receive_name, receive_age, receive_game_nickname, receive_why_join, cancel
+from bot.handlers.appeal import start_appeal, receive_user_type, receive_message, cancel_appeal
+from telegram.ext import ConversationHandler
 
 
 def signal_handler():
@@ -95,6 +98,28 @@ async def main() -> None:
     application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
 
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
+
+    # FSM для анкеты
+    application.add_handler(ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
+        states={
+            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name)],
+            AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_age)],
+            GAME_NICKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_game_nickname)],
+            WHY_JOIN: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_why_join)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)]
+    ))
+
+# FSM для обращения
+    application.add_handler(ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex("^📨 Обращение$"), start_appeal)],
+        states={
+            USER_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_user_type)],
+            MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_appeal)]
+    ))
     
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
