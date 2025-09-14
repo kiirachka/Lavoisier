@@ -99,7 +99,9 @@ async def main() -> None:
 
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
-    # FSM для анкеты
+# ... внутри async def main() ...
+
+# Сначала регистрируем ConversationHandler для анкеты и обращения
     application.add_handler(ConversationHandler(
         entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
         states={
@@ -111,7 +113,6 @@ async def main() -> None:
         fallbacks=[CommandHandler("cancel", cancel)]
     ))
 
-# FSM для обращения
     application.add_handler(ConversationHandler(
         entry_points=[MessageHandler(filters.Regex("^📨 Обращение$"), start_appeal)],
         states={
@@ -120,6 +121,9 @@ async def main() -> None:
         },
         fallbacks=[CommandHandler("cancel", cancel_appeal)]
     ))
+
+# Потом — обработчик для кнопки "Настройки"
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
     
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
