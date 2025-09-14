@@ -82,29 +82,29 @@ async def main() -> None:
     application.add_handler(CommandHandler("start", start))
 
 # 1. Сначала — ConversationHandler для анкеты
-application.add_handler(ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
-    states={
-        NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name)],
-        AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_age)],
-        GAME_NICKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_game_nickname)],
-        WHY_JOIN: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_why_join)],
-    },
-    fallbacks=[CommandHandler("cancel", cancel)]
-))
+    application.add_handler(ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
+        states={
+            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name)],
+            AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_age)],
+            GAME_NICKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_game_nickname)],
+            WHY_JOIN: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_why_join)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)]
+    ))
 
 # 2. Потом — ConversationHandler для обращения
-application.add_handler(ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex("^📨 Обращение$"), start_appeal)],
-    states={
-        USER_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_user_type)],
-        MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
-    },
-    fallbacks=[CommandHandler("cancel", cancel_appeal)]
-))
+    application.add_handler(ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex("^📨 Обращение$"), start_appeal)],
+        states={
+            USER_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_user_type)],
+            MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_appeal)]
+    ))
 
 # 3. В конце — обработчик для "Настройки"
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
     application.add_handler(CommandHandler("settings", settings_menu))
     application.add_handler(CallbackQueryHandler(button_handler))
