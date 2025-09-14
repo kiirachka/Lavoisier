@@ -1,5 +1,6 @@
 # bot/handlers/anketa.py
 import re
+import os
 import logging
 from telegram import Update, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
@@ -7,7 +8,7 @@ from bot.database.core import get_supabase
 
 # Состояния для анкеты
 NAME, AGE, GAME_NICKNAME, WHY_JOIN = range(4)
-# Состояния для обращения
+# Состояния для обращения — будут определены в appeal.py
 USER_TYPE, MESSAGE = range(4, 6)
 
 logger = logging.getLogger(__name__)
@@ -124,7 +125,7 @@ async def receive_why_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     supabase = get_supabase()
     # Получаем все данные
     response = supabase.table('temp_applications').select('*').eq('user_id', user_id).execute()
-    if not response.
+    if not response.data:  # ← ИСПРАВЛЕНО: было response.
         await update.message.reply_text("❌ Ошибка: данные не найдены.")
         return ConversationHandler.END
     
