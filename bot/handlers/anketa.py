@@ -97,17 +97,17 @@ async def receive_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     )
     return GAME_NICKNAME
 
-async def receive_game_nickname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Получает игровой ник."""
-    user_id = update.effective_user.id
-    text = update.message.text.strip()
-    
-    if not validate_text(text):
-        await update.message.reply_text(
-            "❌ Ник содержит запрещённые символы.\n"
-            "Попробуйте ещё раз:"
-        )
-        return GAME_NICKNAME
+def validate_nickname(nickname: str) -> bool:
+    """Проверяет, что ник содержит только латинские буквы, цифры и _."""
+    return bool(re.match(r'^[a-zA-Z0-9_]+$', nickname))
+
+# В receive_game_nickname:
+if not validate_nickname(text):
+    await update.message.reply_text(
+        "❌ Ник может содержать только латинские буквы, цифры и _.\n"
+        "Попробуйте ещё раз:"
+    )
+    return GAME_NICKNAME
     
     supabase = get_supabase()
     supabase.table('temp_applications').update({
