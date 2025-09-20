@@ -133,13 +133,23 @@ async def receive_why_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return WHY_JOIN
     
     supabase = get_supabase()
+    # Сохраняем why_join в БД
+    supabase.table('temp_applications').update({
+        'why_join': text,
+        'step': 'completed'
+    }).eq('user_id', user_id).execute()
+    
     # Получаем все данные
     response = supabase.table('temp_applications').select('*').eq('user_id', user_id).execute()
-    if not response.data:  # ← ИСПРАВЛЕНО: было response.
+    if not response.data:
         await update.message.reply_text("❌ Ошибка: данные не найдены.")
         return ConversationHandler.END
     
     data = response.data[0]
+    
+    # Получаем username
+    user = await context.bot.get_chat(user_id)
+    username = f"@{user.username}" if user.username else "—"
     
     # Формируем сообщение для админов
     admin_message = (
@@ -152,7 +162,7 @@ async def receive_why_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     )
     
     # Отправляем в админ-чат
-    admin_chat_id = os.getenv("ADMIN_CHAT_ID")  # ← Добавь в .env
+    admin_chat_id = os.getenv("ADMIN_CHAT_ID")
     if admin_chat_id:
         try:
             await context.bot.send_message(chat_id=admin_chat_id, text=admin_message)
