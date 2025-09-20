@@ -80,7 +80,7 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         f"📬 Новое обращение!\n\n"
         f"👤 Кто: {data['user_type']}\n"
         f"💬 Сообщение:\n{text}\n\n"
-        f"🆔 ID пользователя: {user_id}"
+        f"🆔 ID: {user_id} | {username}"
     )
     
     # Отправляем в админ-чат
