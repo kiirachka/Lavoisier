@@ -85,7 +85,12 @@ async def main() -> None:
 await application.initialize()
 
 supabase = get_supabase()
-   
+
+    application.add_handler(MessageHandler(
+        filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
+        handle_admin_reply
+    ))
+
 # 1. Сначала — ConversationHandler для анкеты
     application.add_handler(ConversationHandler(
         entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
@@ -106,11 +111,6 @@ supabase = get_supabase()
             MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
         },
         fallbacks=[CommandHandler("cancel", cancel_appeal)]
-    ))
-
-    application.add_handler(MessageHandler(
-        filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
-        handle_admin_reply
     ))
 
 # 3. В конце — обработчик для "Настройки"
