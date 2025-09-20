@@ -17,7 +17,7 @@ from bot.database.core import get_supabase
 from bot.handlers.anketa import start_application, receive_name, receive_age, receive_game_nickname, receive_why_join, cancel, NAME, AGE, GAME_NICKNAME, WHY_JOIN
 from bot.handlers.appeal import start_appeal, receive_user_type, receive_message, cancel_appeal, USER_TYPE, MESSAGE
 from telegram.ext import ConversationHandler
-
+from bot.handlers.admin_reply import handle_admin_reply
 
 def signal_handler():
     """Обработчик сигналов для graceful shutdown."""
@@ -81,6 +81,12 @@ async def main() -> None:
     logger.info("➕ Добавляем обработчик команды /start")
     application.add_handler(CommandHandler("start", start))
 
+# Обработчик ответа админа — регистрируем ПЕРЕД MessageHandler(filters.TEXT)
+    application.add_handler(MessageHandler(
+        filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
+        handle_admin_reply
+    ))
+    
 # 1. Сначала — ConversationHandler для анкеты
     application.add_handler(ConversationHandler(
         entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
