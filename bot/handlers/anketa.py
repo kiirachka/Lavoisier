@@ -61,7 +61,7 @@ async def receive_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     }).eq('user_id', user_id).execute()
     
     await update.message.reply_text(
-        "🔢 Сколько вам лет? (можно примерно, например: 'старше 15'):"
+        "🔢 Сколько вам лет?"
     )
     return AGE
 
@@ -70,9 +70,18 @@ async def receive_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     user_id = update.effective_user.id
     text = update.message.text.strip()
     
-    if not validate_text(text):
+    # Проверка: только цифры
+    if not text.isdigit():
         await update.message.reply_text(
-            "❌ Возраст содержит запрещённые символы.\n"
+            "❌ Возраст должен быть числом.\n"
+            "Попробуйте ещё раз:"
+        )
+        return AGE
+    
+    age = int(text)
+    if age < 12 or age > 100:
+        await update.message.reply_text(
+            "❌ Возраст должен быть от 12 до 100.\n"
             "Попробуйте ещё раз:"
         )
         return AGE
@@ -84,7 +93,7 @@ async def receive_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     }).eq('user_id', user_id).execute()
     
     await update.message.reply_text(
-        "🎮 Введите ваш игровой ник:"
+        "🎮 Введите ваш игровой ник (только латинские буквы, цифры и _):"
     )
     return GAME_NICKNAME
 
@@ -139,7 +148,7 @@ async def receive_why_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         f"🔢 Возраст: {data['age']}\n"
         f"🎮 Ник: {data['game_nickname']}\n"
         f"💬 Почему хочет вступить:\n{data['why_join']}\n\n"
-        f"🆔 ID пользователя: {user_id}"
+        f"🆔 ID: {user_id} | {username}"
     )
     
     # Отправляем в админ-чат
