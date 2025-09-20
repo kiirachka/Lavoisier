@@ -20,15 +20,24 @@ async def _send_message_to_users(context, users, original_msg=None, fallback_tex
     for user in users:
         try:
             if original_msg:
-                # Обработка фото
+              # Обработка фото
                 if original_msg.photo:
                     photo = original_msg.photo[-1].file_id
                     caption = original_msg.caption or ""
+                    parse_mode = original_msg.parse_mode if hasattr(original_msg, 'parse_mode') else None
                     await context.bot.send_photo(
                         chat_id=user['user_id'],
                         photo=photo,
                         caption=caption,
-                        parse_mode=original_msg.parse_mode
+                        parse_mode=parse_mode
+                    )
+# Обработка текста
+                elif original_msg.text:
+                    parse_mode = original_msg.parse_mode if hasattr(original_msg, 'parse_mode') else None
+                    await context.bot.send_message(
+                        chat_id=user['user_id'],
+                        text=original_msg.text,
+                        parse_mode=parse_mode
                     )
                 # Обработка документов
                 elif original_msg.document:
@@ -44,13 +53,7 @@ async def _send_message_to_users(context, users, original_msg=None, fallback_tex
                         chat_id=user['user_id'],
                         sticker=original_msg.sticker.file_id
                     )
-                # Обработка текста
-                elif original_msg.text:
-                    await context.bot.send_message(
-                        chat_id=user['user_id'],
-                        text=original_msg.text,
-                        parse_mode=original_msg.parse_mode
-                    )
+
                 # Обработка голосовых сообщений
                 elif original_msg.voice:
                     await context.bot.send_voice(
