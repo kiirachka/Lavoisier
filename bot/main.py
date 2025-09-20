@@ -81,6 +81,11 @@ async def main() -> None:
     logger.info("➕ Добавляем обработчик команды /start")
     application.add_handler(CommandHandler("start", start))
 
+    logger.info("🔄 Инициализируем приложение...")
+await application.initialize()
+
+supabase = get_supabase()
+
 # Обработчик ответа админа — регистрируем ПЕРЕД MessageHandler(filters.TEXT)
     application.add_handler(MessageHandler(
         filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
@@ -137,10 +142,12 @@ async def main() -> None:
 # Создаём подключение к Supabase — ДОБАВЛЕНО
     supabase = get_supabase()
 
-# Автоочистка: удаляем инстансы старше 1 часа — ДОБАВЛЕНО
+# Автоочистка: удаляем инстансы старше 1 часа
     logger.info("🧹 Очищаем старые инстансы (старше 1 часа)...")
     try:
-        supabase.table('bot_instances').delete().lt('started_at', 'now() - interval \'1 hour\'').execute()
+        from datetime import datetime, timedelta, timezone
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        supabase.table('bot_instances').delete().lt('started_at', one_hour_ago).execute()
         logger.info("✅ Старые инстансы удалены.")
     except Exception as e:
         logger.error(f"❌ Ошибка при очистке старых инстансов: {e}")
