@@ -4,59 +4,68 @@ import sys
 import logging
 import asyncio
 import uuid
-import signal
-from telegram.ext import MessageHandler, filters
-from dotenv import load_dotenv
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    ConversationHandler,
+    filters,
+)
 from telegram import error as telegram_error
+from dotenv import load_dotenv
 from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler, handle_settings_text
-from bot.handlers.admin import list_all_users, list_squad, list_city, add_to_squad, add_to_city, remove_from_squad, remove_from_city
-from bot.handlers.broadcast import broadcast_all, broadcast_squad, broadcast_city, broadcast_starly
+from bot.handlers.admin import (
+    list_all_users,
+    list_squad,
+    list_city,
+    add_to_squad,
+    add_to_city,
+    remove_from_squad,
+    remove_from_city,
+)
+from bot.handlers.broadcast import (
+    broadcast_all,
+    broadcast_squad,
+    broadcast_city,
+    broadcast_starly,
+)
 from bot.database.core import get_supabase
-from bot.handlers.anketa import start_application, receive_name, receive_age, receive_game_nickname, receive_why_join, cancel, NAME, AGE, GAME_NICKNAME, WHY_JOIN
-from bot.handlers.appeal import start_appeal, receive_user_type, receive_message, cancel_appeal, USER_TYPE, MESSAGE
-from telegram.ext import ConversationHandler
+from bot.handlers.anketa import (
+    start_application,
+    receive_name,
+    receive_age,
+    receive_game_nickname,
+    receive_why_join,
+    cancel,
+    NAME,
+    AGE,
+    GAME_NICKNAME,
+    WHY_JOIN,
+)
+from bot.handlers.appeal import (
+    start_appeal,
+    receive_user_type,
+    receive_message,
+    cancel_appeal,
+    USER_TYPE,
+    MESSAGE,
+)
 from bot.handlers.admin_reply import handle_admin_reply
 
-
-def signal_handler():
-    """Обработчик сигналов для graceful shutdown."""
-    logger.info("🛑 Получен системный сигнал. Завершаем бота...")
-    sys.exit(0)
-
-
-signal.signal(signal.SIGINT, lambda s, f: signal_handler())
-signal.signal(signal.SIGTERM, lambda s, f: signal_handler())
-
+# Настройка логирования
 logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    level=logging.INFO,  # Уменьшаем уровень логов для продакшена
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
-logger.info("=" * 60)
-logger.info("🚀 [BOT] НАЧАЛО ИНИЦИАЛИЗАЦИИ БОТА")
-logger.info("=" * 60)
-logger.info(f"🐍 Python версия: {sys.version}")
-logger.info(f"📁 Текущая директория: {os.getcwd()}")
-logger.info(f"📄 Файлы в директории: {os.listdir()}")
+# Загрузка переменных окружения
+load_dotenv()
 
-if os.path.exists("bot"):
-    logger.info(f"📁 bot/ содержимое: {os.listdir('bot')}")
-else:
-    logger.error("❌ Папка 'bot' не найдена!")
-    sys.exit(1)
-
-dotenv_path = '.env'
-logger.info(f"📥 Загружаем переменные окружения из: {dotenv_path}")
-if not os.path.exists(dotenv_path):
-    logger.warning(f"⚠️ Файл {dotenv_path} не найден!")
-
-load_dotenv(dotenv_path=dotenv_path)
-
-REQUIRED_VARS = ['BOT_TOKEN', 'SUPABASE_URL', 'SUPABASE_KEY']
+REQUIRED_VARS = ["BOT_TOKEN", "SUPABASE_URL", "SUPABASE_KEY"]
 missing_vars = []
 
 for var in REQUIRED_VARS:
@@ -66,72 +75,59 @@ for var in REQUIRED_VARS:
         missing_vars.append(var)
     else:
         display_value = value[:10] + "..." if len(value) > 10 else value
-        logger.info(f"✅ {var} = {display_value}")
+        logger.debug(f"✅ {var} = {display_value}") # Используем debug для чувствительных данных
 
 if missing_vars:
     logger.critical("🚨 КРИТИЧЕСКАЯ ОШИБКА: Не хватает переменных окружения!")
     sys.exit(1)
 
+# Глобальная переменная для хранения application
+bot_application = None
 
-async def main(return_app=False) -> None:
-    """Запускает бота."""
-    token = os.getenv('BOT_TOKEN')
-    
+async def initialize_bot():
+    """Инициализирует и настраивает бота."""
+    global bot_application
+    token = os.getenv("BOT_TOKEN")
+
     logger.info("🔧 [BOT] Создаем Application...")
     application = ApplicationBuilder().token(token).build()
-    
-    logger.info("➕ Добавляем обработчик команды /start")
-    application.add_handler(CommandHandler("start", start))
 
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
 
     supabase = get_supabase()
 
-    # Автоочистка: удаляем инстансы старше 1 часа
-    logger.info("🧹 Очищаем старые инстансы (старше 1 часа)...")
-    try:
-        from datetime import datetime, timedelta, timezone
-        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-        supabase.table('bot_instances').delete().lt('started_at', one_hour_ago).execute()
-        logger.info("✅ Старые инстансы удалены.")
-    except Exception as e:
-        logger.error(f"❌ Ошибка при очистке старых инстансов: {e}")
-
-    # Управление инстансам
+    # Управление инстансами
     INSTANCE_ID = str(uuid.uuid4())
     logger.info(f"🔑 Этот инстанс имеет ID: {INSTANCE_ID}")
 
     # Деактивируем все предыдущие инстансы
     logger.info("🔌 Деактивируем все предыдущие инстансы бота...")
     try:
-        supabase.table('bot_instances').update({'is_active': False}).eq('is_active', True).execute()
+        supabase.table("bot_instances").update({"is_active": False}).eq("is_active", True).execute()
         logger.info("✅ Все предыдущие инстансы деактивированы.")
     except Exception as e:
         logger.error(f"❌ Ошибка при деактивации старых инстансов: {e}")
-    
+
+    # Автоочистка: удаляем инстансы старше 1 часа
+    logger.info("🧹 Очищаем старые инстансы (старше 1 часа)...")
+    try:
+        from datetime import datetime, timedelta, timezone
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        supabase.table("bot_instances").delete().lt("started_at", one_hour_ago).execute()
+        logger.info("✅ Старые инстансы удалены.")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при очистке старых инстансов: {e}")
+
     logger.info("✅ Регистрируем текущий инстанс как активный...")
     try:
-        supabase.table('bot_instances').insert({
-            'instance_id': INSTANCE_ID,
-            'is_active': True
+        supabase.table("bot_instances").insert({
+            "instance_id": INSTANCE_ID,
+            "is_active": True,
         }).execute()
         logger.info("✅ Текущий инстанс успешно зарегистрирован.")
     except Exception as e:
         logger.error(f"❌ Ошибка при регистрации текущего инстанса: {e}")
-
-    logger.info("🧹 Принудительный сброс всех сессий Telegram API...")
-    try:
-        updates = await application.bot.get_updates(offset=-1, timeout=1)
-        logger.info(f"✅ Получено {len(updates)} обновлений при сбросе.")
-    except Exception as e:
-        logger.warning(f"⚠️ Не удалось сбросить сессии: {e}")
-
-    logger.info("🧹 Сбрасываем webhook...")
-    try:
-        await application.bot.delete_webhook(drop_pending_updates=True)
-    except Exception as e:
-        logger.warning(f"⚠️ Не удалось сбросить webhook: {e}")
 
     # Регистрация обработчиков — ПОРЯДОК ВАЖЕН!
 
@@ -139,7 +135,7 @@ async def main(return_app=False) -> None:
     application.add_handler(
         MessageHandler(
             filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
-            handle_admin_reply
+            handle_admin_reply,
         )
     )
 
@@ -153,7 +149,7 @@ async def main(return_app=False) -> None:
                 GAME_NICKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_game_nickname)],
                 WHY_JOIN: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_why_join)],
             },
-            fallbacks=[CommandHandler("cancel", cancel)]
+            fallbacks=[CommandHandler("cancel", cancel)],
         )
     )
 
@@ -165,11 +161,12 @@ async def main(return_app=False) -> None:
                 USER_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_user_type)],
                 MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
             },
-            fallbacks=[CommandHandler("cancel", cancel_appeal)]
+            fallbacks=[CommandHandler("cancel", cancel_appeal)],
         )
     )
 
     # Команды
+    application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("settings", settings_menu))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(CommandHandler("list_all", list_all_users))
@@ -187,43 +184,53 @@ async def main(return_app=False) -> None:
     # Обработчик текстовых сообщений для "Настройки"
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
+    logger.info("🚀 Приложение бота инициализировано.")
+    bot_application = application
+    return application
 
-    logger.info("🚀 Запускаем приложение...")
-    await application.start()
-    
-    # Возвращаем application, если return_app=True
-    if return_app:
-        return application
-    else:
-        logger.info("💤 Бот запущен и работает. Ожидание завершения...")
-        try:
-            await asyncio.Event().wait()
-        except KeyboardInterrupt:
-            logger.info("🛑 Получен сигнал завершения. Останавливаем бота...")
-        finally:
-            logger.info("🔌 Деактивируем текущий инстанс...")
-            try:
-                supabase.table('bot_instances').update({'is_active': False}).eq('instance_id', INSTANCE_ID).execute()
-                logger.info("✅ Текущий инстанс деактивирован.")
-            except Exception as e:
-                logger.warning(f"⚠️ Не удалось деактивировать инстанс: {e}")
 
-            logger.info("⏹️ Останавливаем updater...")
-            try:
-                await application.updater.stop()
-            except Exception as e:
-                logger.warning(f"⚠️ Ошибка при остановке updater: {e}")
+async def start_bot():
+    """Запускает бота."""
+    global bot_application
+    if not bot_application:
+        logger.error("❌ Приложение бота не инициализировано.")
+        return
 
-            logger.info("⏹️ Останавливаем приложение...")
-            try:
-                await application.stop()
-            except Exception as e:
-                logger.warning(f"⚠️ Ошибка при остановке приложения: {e}")
+    try:
+        # Устанавливаем вебхук (URL должен быть настроен в .env)
+        WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+        if WEBHOOK_URL:
+            logger.info(f"🔗 Устанавливаем вебхук на {WEBHOOK_URL}")
+            await bot_application.bot.set_webhook(url=WEBHOOK_URL)
+        else:
+            logger.warning("⚠️ WEBHOOK_URL не установлен, вебхук не будет установлен.")
 
-            logger.info("🧹 Закрываем приложение...")
-            try:
-                await application.shutdown()
-            except Exception as e:
-                logger.warning(f"⚠️ Ошибка при закрытии приложения: {e}")
+        logger.info("🚀 Запускаем приложение...")
+        await bot_application.start()
+        logger.info("✅ Бот успешно запущен и работает через вебхук.")
 
-            logger.info("✅ Бот успешно остановлен.")
+        # Не ждем бесконечно, так как это будет запущено в aiohttp приложении
+        # await asyncio.Event().wait()
+
+    except Exception as e:
+        logger.exception("💥 Ошибка при запуске бота:")
+        raise
+
+
+async def stop_bot():
+    """Останавливает бота."""
+    global bot_application
+    if not bot_application:
+        logger.warning("⚠️ Приложение бота не инициализировано или уже остановлено.")
+        return
+
+    logger.info("🛑 Останавливаем бота...")
+    try:
+        await bot_application.stop()
+        logger.info("⏹️ Приложение остановлено.")
+        await bot_application.shutdown()
+        logger.info("🧹 Приложение закрыто.")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при остановке бота: {e}")
+    finally:
+        bot_application = None
