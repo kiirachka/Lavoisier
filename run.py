@@ -17,6 +17,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# run.py
+
 async def webhook_handler(request: web.Request) -> web.Response:
     """Обрабатывает вебхук от Telegram."""
     app_bot = request.app.get('bot_app')
@@ -26,14 +28,13 @@ async def webhook_handler(request: web.Request) -> web.Response:
 
     try:
         update_data = await request.json()
-        logger.debug(f"📥 Вебхук получил обновление: {update_data}")
+        logger.info(f"📥 Вебхук получил обновление: {update_data}")  # ← ИЗМЕНЕНО: INFO вместо DEBUG
         await app_bot.update_queue.put(update_data)
-        logger.debug("✅ Обновление помещено в очередь бота.")
+        logger.info("✅ Обновление помещено в очередь бота.")  # ← ИЗМЕНЕНО: INFO
         return web.Response(status=200, text="OK")
     except Exception as e:
         logger.exception("💥 Ошибка обработки вебхука:")
         return web.Response(status=500, text="Internal Server Error")
-
 
 async def healthcheck_handler(request: web.Request) -> web.Response:
     """Обработчик для проверки состояния сервиса."""
