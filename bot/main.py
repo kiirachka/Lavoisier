@@ -202,20 +202,22 @@ async def start_bot_application(application: "Application", app_context: dict):
         # --- ИСПРАВЛЕНО ---
         logger.info("🔄 Запускаем обработчик очереди обновлений...")
 
-        async def _update_fetcher():
-            """Внутренний обработчик очереди обновлений."""
-            logger.debug("🔄 Начало внутреннего обработчика обновлений.")
-            try:
-                while True:
-                    update = await application.update_queue.get()
-                    logger.debug(f"📥 Получено обновление из очереди: {update}")
-                    await application.process_update(update)
-                    logger.debug("✅ Обновление обработано.")
-            except asyncio.CancelledError:
-                logger.info("🛑 Внутренний обработчик обновлений отменён.")
-                raise
-            except Exception as e:
-                logger.exception(f"💥 Ошибка в обработчике очереди обновлений: {e}")
+# bot/main.py
+
+async def _update_fetcher():
+    """Внутренний обработчик очереди обновлений."""
+    logger.info("🔄 Начало внутреннего обработчика обновлений.")  # ← ИЗМЕНЕНО: INFO
+    try:
+        while True:
+            update = await application.update_queue.get()
+            logger.info(f"📥 Получено обновление из очереди: {update}")  # ← ИЗМЕНЕНО: INFO
+            await application.process_update(update)
+            logger.info("✅ Обновление обработано.")  # ← ИЗМЕНЕНО: INFO
+    except asyncio.CancelledError:
+        logger.info("🛑 Внутренний обработчик обновлений отменён.")
+        raise
+    except Exception as e:
+        logger.exception(f"💥 Ошибка в обработчике очереди обновлений: {e}")
 
         # Запускаем задачу и сохраняем её в app_context
         fetcher_task = asyncio.create_task(_update_fetcher())
