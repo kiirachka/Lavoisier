@@ -1,5 +1,5 @@
 # bot/main.py
-import asyncio  # ← ИСПРАВЛЕНО: добавлен импорт
+import asyncio
 import os
 import sys
 import logging
@@ -182,7 +182,7 @@ async def create_bot_application() -> "Application":
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
     logger.info("🚀 Приложение бота инициализировано и готово к запуску.")
-    return application  # Возвращаем сконфигурированный, но не запущенный Application
+    return application
 
 
 async def start_bot_application(application: "Application", app_context: dict):
@@ -199,50 +199,17 @@ async def start_bot_application(application: "Application", app_context: dict):
         logger.info("🚀 Запускаем приложение...")
         await application.start()
 
+        logger.info("✅ Бот успешно запущен и работает через вебхук.")
 
-        logger.info("🔄 Запускаем обработчик очереди обновлений...")
-
-async def _update_fetcher():
-    """Внутренний обработчик очереди обновлений."""
-    logger.info("🔄 Начало внутреннего обработчика обновлений.")  # ← ИЗМЕНЕНО: INFO
-    try:
-        while True:
-            update = await application.update_queue.get()
-            logger.info(f"📥 Получено обновление из очереди: {update}")  # ← ИЗМЕНЕНО: INFO
-            await application.process_update(update)
-            logger.info("✅ Обновление обработано.")  # ← ИЗМЕНЕНО: INFO
-    except asyncio.CancelledError:
-        logger.info("🛑 Внутренний обработчик обновлений отменён.")
-        raise
     except Exception as e:
-        logger.exception(f"💥 Ошибка в обработчике очереди обновлений: {e}")
-    finally:
-        logger.info("🛑 Обработчик очереди обновлений завершён.")
+        logger.exception("💥 Ошибка при запуске бота:")
+        raise
 
-# Запускаем задачу и сохраняем её в app_context
-fetcher_task = asyncio.create_task(_update_fetcher())
-app_context['_update_fetcher_task'] = fetcher_task
-logger.info("✅ Внутренний обработчик очереди обновлений запущен.")
-# --- КОНЕЦ ИСПРАВЛЕНИЯ ---
-
-logger.info("✅ Бот успешно запущен и работает через вебхук.")
 
 async def stop_bot_application(application: "Application", app_context: dict):
     """Останавливает переданный экземпляр Application бота."""
     logger.info("🛑 Останавливаем бота...")
     try:
-        # --- ИСПРАВЛЕНО ---
-        # Останавливаем внутренний обработчик обновлений
-        task = app_context.pop('_update_fetcher_task', None)
-        if task:
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-            logger.info("🛑 Внутренний обработчик очереди обновлений остановлен.")
-        # --- КОНЕЦ ИСПРАВЛЕНИЯ ---
-
         await application.stop()
         logger.info("⏹️ Приложение остановлено.")
         await application.shutdown()
