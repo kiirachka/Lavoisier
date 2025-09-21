@@ -46,7 +46,7 @@ async def start_bot_wrapper(app):
     try:
         bot_app = await create_bot_application()
         logger.info("🚀 Запуск бота...")
-        await start_bot_application(bot_app)
+        await start_bot_application(bot_app, app)  # Передаём aiohttp app как app_context
         # Сохраняем ссылку на Application в aiohttp app
         app['bot_app'] = bot_app
         logger.info("✅ Бот создан, инициализирован и запущен.")
