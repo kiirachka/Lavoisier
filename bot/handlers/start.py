@@ -15,7 +15,7 @@ reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает команду /start и показывает главное меню."""
-    logger.info(f"📥 Получена команда /start от пользователя {update.effective_user.id}")
+    logger.info(f"📥 Получена команда /start от пользователя {update.effective_user.id}")  # ← ДОБАВЛЕНО
     try:
         # Регистрируем/проверяем пользователя в БД
         user = update.effective_user
@@ -33,7 +33,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 Выбери пункт в меню ниже ↓
         """
-        await update.message.reply_text(welcome_text, reply_markup=reply_markup)
-        logger.info(f"📤 Отправлено приветственное сообщение пользователю {user.id}")
+ await update.message.reply_text(welcome_text, reply_markup=reply_markup)
+        logger.info(f"📤 Отправлено приветственное сообщение пользователю {user.id}")  # ← ДОБАВЛЕНО
     except Exception as e:
         logger.exception(f"💥 Ошибка в обработчике /start для пользователя {update.effective_user.id}: {e}")
