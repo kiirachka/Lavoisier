@@ -73,7 +73,7 @@ if missing_vars:
     sys.exit(1)
 
 
-async def main() -> None:
+async def main(return_app=False) -> None:
     """Запускает бота."""
     token = os.getenv('BOT_TOKEN')
     
@@ -86,7 +86,6 @@ async def main() -> None:
     logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
 
-    # Создаём подключение к Supabase
     supabase = get_supabase()
 
     # Автоочистка: удаляем инстансы старше 1 часа
@@ -136,7 +135,7 @@ async def main() -> None:
 
     # Регистрация обработчиков — ПОРЯДОК ВАЖЕН!
 
-    # Обработчик ответа админа — должен быть первым среди MessageHandler
+    # Обработчик ответа админа
     application.add_handler(
         MessageHandler(
             filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
@@ -185,82 +184,46 @@ async def main() -> None:
     application.add_handler(CommandHandler("broadcast_city", broadcast_city))
     application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
 
-    # Обработчик текстовых сообщений для "Настройки" — должен быть ПОСЛЕДНИМ
+    # Обработчик текстовых сообщений для "Настройки"
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
-    # Запуск polling
-    polling_success = False
-    for attempt in range(5):
-        logger.info(f"⏳ Попытка {attempt + 1}: ждём 30 секунд перед запуском polling...")
-        await asyncio.sleep(30)
-        
-        try:
-            logger.info("▶️ Пробуем запустить updater...")
-            await application.updater.start_polling(drop_pending_updates=True)
-            logger.info("✅ Polling успешно запущен!")
-            polling_success = True
-            break
-        except telegram_error.Conflict:
-            logger.warning("⚠️ Конфликт при запуске polling, повторяем сброс...")
-            try:
-                updates = await application.bot.get_updates(offset=-1, timeout=1)
-                logger.info(f"✅ Сброшено {len(updates)} обновлений.")
-            except Exception as e:
-                logger.error(f"❌ Ошибка при повторном сбросе: {e}")
-            if attempt == 4:
-                logger.critical("💥 Не удалось запустить polling после 5 попыток!")
-                raise
-        except Exception as e:
-            logger.critical(f"💥 Неизвестная ошибка: {e}")
-            raise
-
-    if not polling_success:
-        logger.critical("💥 Не удалось запустить polling!")
-        raise RuntimeError("Polling failed")
 
     logger.info("🚀 Запускаем приложение...")
     await application.start()
     
-    logger.info("💤 Бот запущен и работает. Ожидание завершения...")
-    try:
-        await asyncio.Event().wait()
-    except KeyboardInterrupt:
-        logger.info("🛑 Получен сигнал завершения. Останавливаем бота...")
-    finally:
-        logger.info("🔌 Деактивируем текущий инстанс...")
+    # Возвращаем application, если return_app=True
+    if return_app:
+        return application
+    else:
+        logger.info("💤 Бот запущен и работает. Ожидание завершения...")
         try:
-            supabase.table('bot_instances').update({'is_active': False}).eq('instance_id', INSTANCE_ID).execute()
-            logger.info("✅ Текущий инстанс деактивирован.")
-        except Exception as e:
-            logger.warning(f"⚠️ Не удалось деактивировать инстанс: {e}")
+            await asyncio.Event().wait()
+        except KeyboardInterrupt:
+            logger.info("🛑 Получен сигнал завершения. Останавливаем бота...")
+        finally:
+            logger.info("🔌 Деактивируем текущий инстанс...")
+            try:
+                supabase.table('bot_instances').update({'is_active': False}).eq('instance_id', INSTANCE_ID).execute()
+                logger.info("✅ Текущий инстанс деактивирован.")
+            except Exception as e:
+                logger.warning(f"⚠️ Не удалось деактивировать инстанс: {e}")
 
-        logger.info("⏹️ Останавливаем updater...")
-        try:
-            await application.updater.stop()
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка при остановке updater: {e}")
+            logger.info("⏹️ Останавливаем updater...")
+            try:
+                await application.updater.stop()
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка при остановке updater: {e}")
 
-        logger.info("⏹️ Останавливаем приложение...")
-        try:
-            await application.stop()
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка при остановке приложения: {e}")
+            logger.info("⏹️ Останавливаем приложение...")
+            try:
+                await application.stop()
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка при остановке приложения: {e}")
 
-        logger.info("🧹 Закрываем приложение...")
-        try:
-            await application.shutdown()
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка при закрытии приложения: {e}")
+            logger.info("🧹 Закрываем приложение...")
+            try:
+                await application.shutdown()
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка при закрытии приложения: {e}")
 
-        logger.info("✅ Бот успешно остановлен.")
-
-
-if __name__ == "__main__":
-    logger.info("🏁 Запуск основного цикла...")
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("👋 Бот остановлен вручную.")
-    except Exception as e:
-        logger.exception("💥 Непредвиденная ошибка:")
-        sys.exit(1)
+            logger.info("✅ Бот успешно остановлен.")
