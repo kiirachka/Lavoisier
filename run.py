@@ -11,12 +11,14 @@ from bot.main import initialize_bot, start_bot, stop_bot, bot_application
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# run.py
+
 async def webhook_handler(request: web.Request) -> web.Response:
     """Обрабатывает вебхук от Telegram."""
-    # Простая проверка токена в URL (можно усилить)
     url_token = request.match_info.get('token')
-    expected_token = os.getenv('BOT_TOKEN', '').split(':')[1] if ':' in os.getenv('BOT_TOKEN', '') else None
+    expected_token = os.getenv('BOT_TOKEN')
 
+    # Проверяем, совпадает ли токен полностью
     if not expected_token or url_token != expected_token:
         logger.warning(f"⚠️ Неверный токен в вебхуке: {url_token}")
         return web.Response(status=403, text="Forbidden")
@@ -27,7 +29,6 @@ async def webhook_handler(request: web.Request) -> web.Response:
 
     try:
         update_data = await request.json()
-        # logger.debug(f"📥 Получено обновление: {update_data}") # Включить для отладки
         await bot_application.update_queue.put(update_data)
         return web.Response(status=200, text="OK")
     except Exception as e:
