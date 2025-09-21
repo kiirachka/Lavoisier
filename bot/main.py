@@ -1,9 +1,9 @@
 # bot/main.py
+import asyncio  # ← ИСПРАВЛЕНО: добавлен импорт
 import os
 import sys
 import logging
 import uuid
-import asyncio  
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -182,10 +182,10 @@ async def create_bot_application() -> "Application":
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
     logger.info("🚀 Приложение бота инициализировано и готово к запуску.")
-    return application # Возвращаем сконфигурированный, но не запущенный Application
+    return application  # Возвращаем сконфигурированный, но не запущенный Application
 
 
-async def start_bot_application(application: "Application"):
+async def start_bot_application(application: "Application", app_context: dict):
     """Запускает переданный экземпляр Application бота."""
     try:
         # Устанавливаем вебхук (URL должен быть настроен в .env)
@@ -198,9 +198,9 @@ async def start_bot_application(application: "Application"):
 
         logger.info("🚀 Запускаем приложение...")
         await application.start()
-        
+
+        # --- ИСПРАВЛЕНО ---
         logger.info("🔄 Запускаем обработчик очереди обновлений...")
-        from telegram.ext import Updater  # Импортируем для доступа к _update_fetcher
 
         async def _update_fetcher():
             """Внутренний обработчик очереди обновлений."""
@@ -217,10 +217,12 @@ async def start_bot_application(application: "Application"):
             except Exception as e:
                 logger.exception(f"💥 Ошибка в обработчике очереди обновлений: {e}")
 
-        # Создаем задачу для обработчика
-        application._update_fetcher_task = asyncio.create_task(_update_fetcher())
+        # Запускаем задачу и сохраняем её в app_context
+        fetcher_task = asyncio.create_task(_update_fetcher())
+        app_context['_update_fetcher_task'] = fetcher_task
         logger.info("✅ Внутренний обработчик очереди обновлений запущен.")
-        # --- КОНЕЦ ДОБАВЛЕНИЯ ---
+        # --- КОНЕЦ ИСПРАВЛЕНИЯ ---
+
         logger.info("✅ Бот успешно запущен и работает через вебхук.")
 
     except Exception as e:
@@ -228,21 +230,22 @@ async def start_bot_application(application: "Application"):
         raise
 
 
-async def stop_bot_application(application: "Application"):
+async def stop_bot_application(application: "Application", app_context: dict):
     """Останавливает переданный экземпляр Application бота."""
     logger.info("🛑 Останавливаем бота...")
     try:
-                # --- ДОБАВЛЕНО ---
+        # --- ИСПРАВЛЕНО ---
         # Останавливаем внутренний обработчик обновлений
-        if hasattr(application, '_update_fetcher_task') and application._update_fetcher_task:
-            application._update_fetcher_task.cancel()
+        task = app_context.pop('_update_fetcher_task', None)
+        if task:
+            task.cancel()
             try:
-                await application._update_fetcher_task
+                await task
             except asyncio.CancelledError:
                 pass
             logger.info("🛑 Внутренний обработчик очереди обновлений остановлен.")
-        # --- КОНЕЦ ДОБАВЛЕНИЯ ---
-        
+        # --- КОНЕЦ ИСПРАВЛЕНИЯ ---
+
         await application.stop()
         logger.info("⏹️ Приложение остановлено.")
         await application.shutdown()
