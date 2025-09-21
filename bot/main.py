@@ -212,6 +212,10 @@ async def _update_fetcher():
             update = await application.update_queue.get()
             logger.info(f"📥 Получено обновление из очереди: {update}")  # ← ИЗМЕНЕНО: INFO
             await application.process_update(update)
+            except Exception as e:
+    logger.exception(f"💥 Ошибка в обработчике очереди обновлений: {e}")
+finally:
+    logger.info("🛑 Обработчик очереди обновлений завершён.")
             logger.info("✅ Обновление обработано.")  # ← ИЗМЕНЕНО: INFO
     except asyncio.CancelledError:
         logger.info("🛑 Внутренний обработчик обновлений отменён.")
