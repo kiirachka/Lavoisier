@@ -19,10 +19,12 @@ from bot.handlers.appeal import start_appeal, receive_user_type, receive_message
 from telegram.ext import ConversationHandler
 from bot.handlers.admin_reply import handle_admin_reply
 
+
 def signal_handler():
     """Обработчик сигналов для graceful shutdown."""
     logger.info("🛑 Получен системный сигнал. Завершаем бота...")
     sys.exit(0)
+
 
 signal.signal(signal.SIGINT, lambda s, f: signal_handler())
 signal.signal(signal.SIGTERM, lambda s, f: signal_handler())
@@ -82,66 +84,12 @@ async def main() -> None:
     application.add_handler(CommandHandler("start", start))
 
     logger.info("🔄 Инициализируем приложение...")
-await application.initialize()
-
-supabase = get_supabase()
-
-    application.add_handler(MessageHandler(
-        filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
-        handle_admin_reply
-    ))
-
-# 1. Сначала — ConversationHandler для анкеты
-    application.add_handler(ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
-        states={
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name)],
-            AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_age)],
-            GAME_NICKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_game_nickname)],
-            WHY_JOIN: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_why_join)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)]
-    ))
-
-# 2. Потом — ConversationHandler для обращения
-    application.add_handler(ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^📨 Обращение$"), start_appeal)],
-        states={
-            USER_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_user_type)],
-            MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel_appeal)]
-    ))
-
-# 3. В конце — обработчик для "Настройки"
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
-
-    application.add_handler(CommandHandler("settings", settings_menu))
-    application.add_handler(CallbackQueryHandler(button_handler))
-
-    application.add_handler(CommandHandler("list_all", list_all_users))
-    application.add_handler(CommandHandler("list_squad", list_squad))
-    application.add_handler(CommandHandler("list_city", list_city))
-    application.add_handler(CommandHandler("add_to_squad", add_to_squad))
-    application.add_handler(CommandHandler("add_to_city", add_to_city))
-    application.add_handler(CommandHandler("remove_from_squad", remove_from_squad))
-    application.add_handler(CommandHandler("remove_from_city", remove_from_city))
-
-    application.add_handler(CommandHandler("broadcast_all", broadcast_all))
-    application.add_handler(CommandHandler("broadcast_squad", broadcast_squad))
-    application.add_handler(CommandHandler("broadcast_city", broadcast_city))
-    application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
-
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
-
-
-    logger.info("🔄 Инициализируем приложение...")
     await application.initialize()
 
-# Создаём подключение к Supabase — ДОБАВЛЕНО
+    # Создаём подключение к Supabase
     supabase = get_supabase()
 
-# Автоочистка: удаляем инстансы старше 1 часа
+    # Автоочистка: удаляем инстансы старше 1 часа
     logger.info("🧹 Очищаем старые инстансы (старше 1 часа)...")
     try:
         from datetime import datetime, timedelta, timezone
@@ -151,11 +99,11 @@ supabase = get_supabase()
     except Exception as e:
         logger.error(f"❌ Ошибка при очистке старых инстансов: {e}")
 
-# Управление инстансами
+    # Управление инстансами
     INSTANCE_ID = str(uuid.uuid4())
     logger.info(f"🔑 Этот инстанс имеет ID: {INSTANCE_ID}")
 
-# Деактивируем все предыдущие инстансы
+    # Деактивируем все предыдущие инстансы
     logger.info("🔌 Деактивируем все предыдущие инстансы бота...")
     try:
         supabase.table('bot_instances').update({'is_active': False}).eq('is_active', True).execute()
@@ -186,6 +134,61 @@ supabase = get_supabase()
     except Exception as e:
         logger.warning(f"⚠️ Не удалось сбросить webhook: {e}")
 
+    # Регистрация обработчиков — ПОРЯДОК ВАЖЕН!
+
+    # Обработчик ответа админа — должен быть первым среди MessageHandler
+    application.add_handler(
+        MessageHandler(
+            filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
+            handle_admin_reply
+        )
+    )
+
+    # FSM для анкеты
+    application.add_handler(
+        ConversationHandler(
+            entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
+            states={
+                NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name)],
+                AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_age)],
+                GAME_NICKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_game_nickname)],
+                WHY_JOIN: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_why_join)],
+            },
+            fallbacks=[CommandHandler("cancel", cancel)]
+        )
+    )
+
+    # FSM для обращения
+    application.add_handler(
+        ConversationHandler(
+            entry_points=[MessageHandler(filters.Regex("^📨 Обращение$"), start_appeal)],
+            states={
+                USER_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_user_type)],
+                MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
+            },
+            fallbacks=[CommandHandler("cancel", cancel_appeal)]
+        )
+    )
+
+    # Команды
+    application.add_handler(CommandHandler("settings", settings_menu))
+    application.add_handler(CallbackQueryHandler(button_handler))
+    application.add_handler(CommandHandler("list_all", list_all_users))
+    application.add_handler(CommandHandler("list_squad", list_squad))
+    application.add_handler(CommandHandler("list_city", list_city))
+    application.add_handler(CommandHandler("add_to_squad", add_to_squad))
+    application.add_handler(CommandHandler("add_to_city", add_to_city))
+    application.add_handler(CommandHandler("remove_from_squad", remove_from_squad))
+    application.add_handler(CommandHandler("remove_from_city", remove_from_city))
+    application.add_handler(CommandHandler("broadcast_all", broadcast_all))
+    application.add_handler(CommandHandler("broadcast_squad", broadcast_squad))
+    application.add_handler(CommandHandler("broadcast_city", broadcast_city))
+    application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
+
+    # Обработчик текстовых сообщений для "Настройки" — должен быть ПОСЛЕДНИМ
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
+
+    # Запуск polling
     polling_success = False
     for attempt in range(5):
         logger.info(f"⏳ Попытка {attempt + 1}: ждём 30 секунд перед запуском polling...")
