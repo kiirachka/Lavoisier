@@ -4,6 +4,7 @@ import os
 import sys
 import logging
 import uuid
+import functools
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -80,6 +81,23 @@ for var in REQUIRED_VARS:
 if missing_vars:
     logger.critical("🚨 КРИТИЧЕСКАЯ ОШИБКА: Не хватает переменных окружения!")
     sys.exit(1)
+
+
+# === ДОБАВЛЕНО: Декоратор для логирования вызовов обработчиков ===
+def log_handler(func):
+    """Декоратор для логирования вызовов обработчиков."""
+    @functools.wraps(func)
+    async def wrapper(update, context):
+        logger.info(f"📥 Вызов обработчика: {func.__name__}")
+        try:
+            result = await func(update, context)
+            logger.info(f"✅ Обработчик {func.__name__} выполнен успешно.")
+            return result
+        except Exception as e:
+            logger.exception(f"💥 Ошибка в обработчике {func.__name__}: {e}")
+            raise
+    return wrapper
+# === КОНЕЦ ДОБАВЛЕНИЯ ===
 
 
 async def create_bot_application() -> "Application":
@@ -162,21 +180,21 @@ async def create_bot_application() -> "Application":
         )
     )
 
-    # Команды
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("settings", settings_menu))
-    application.add_handler(CallbackQueryHandler(button_handler))
-    application.add_handler(CommandHandler("list_all", list_all_users))
-    application.add_handler(CommandHandler("list_squad", list_squad))
-    application.add_handler(CommandHandler("list_city", list_city))
-    application.add_handler(CommandHandler("add_to_squad", add_to_squad))
-    application.add_handler(CommandHandler("add_to_city", add_to_city))
-    application.add_handler(CommandHandler("remove_from_squad", remove_from_squad))
-    application.add_handler(CommandHandler("remove_from_city", remove_from_city))
-    application.add_handler(CommandHandler("broadcast_all", broadcast_all))
-    application.add_handler(CommandHandler("broadcast_squad", broadcast_squad))
-    application.add_handler(CommandHandler("broadcast_city", broadcast_city))
-    application.add_handler(CommandHandler("broadcast_starly", broadcast_starly))
+    # Команды (с логированием)
+    application.add_handler(CommandHandler("start", log_handler(start)))
+    application.add_handler(CommandHandler("settings", log_handler(settings_menu)))
+    application.add_handler(CallbackQueryHandler(log_handler(button_handler)))
+    application.add_handler(CommandHandler("list_all", log_handler(list_all_users)))
+    application.add_handler(CommandHandler("list_squad", log_handler(list_squad)))
+    application.add_handler(CommandHandler("list_city", log_handler(list_city)))
+    application.add_handler(CommandHandler("add_to_squad", log_handler(add_to_squad)))
+    application.add_handler(CommandHandler("add_to_city", log_handler(add_to_city)))
+    application.add_handler(CommandHandler("remove_from_squad", log_handler(remove_from_squad)))
+    application.add_handler(CommandHandler("remove_from_city", log_handler(remove_from_city)))
+    application.add_handler(CommandHandler("broadcast_all", log_handler(broadcast_all)))
+    application.add_handler(CommandHandler("broadcast_squad", log_handler(broadcast_squad)))
+    application.add_handler(CommandHandler("broadcast_city", log_handler(broadcast_city)))
+    application.add_handler(CommandHandler("broadcast_starly", log_handler(broadcast_starly)))
 
     # Обработчик текстовых сообщений для "Настройки"
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
@@ -203,13 +221,13 @@ async def start_bot_application(application: "Application", app_context: dict):
 
         async def _update_fetcher():
             """Внутренний обработчик очереди обновлений."""
-            logger.debug("🔄 Начало внутреннего обработчика обновлений.")
+            logger.info("🔄 Начало внутреннего обработчика обновлений.")
             try:
                 while True:
                     update = await application.update_queue.get()
-                    logger.debug(f"📥 Получено обновление из очереди: {update}")
+                    logger.info(f"📥 Получено обновление из очереди: {update}")
                     await application.process_update(update)
-                    logger.debug("✅ Обновление обработано.")
+                    logger.info("✅ Обновление обработано.")
             except asyncio.CancelledError:
                 logger.info("🛑 Внутренний обработчик обновлений отменён.")
                 raise
