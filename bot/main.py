@@ -2,7 +2,6 @@
 import os
 import sys
 import logging
-import asyncio
 import uuid
 from telegram.ext import (
     ApplicationBuilder,
@@ -56,7 +55,7 @@ from bot.handlers.admin_reply import handle_admin_reply
 
 # Настройка логирования
 logging.basicConfig(
-    level=logging.INFO,  # Уменьшаем уровень логов для продакшена
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
@@ -75,18 +74,15 @@ for var in REQUIRED_VARS:
         missing_vars.append(var)
     else:
         display_value = value[:10] + "..." if len(value) > 10 else value
-        logger.debug(f"✅ {var} = {display_value}") # Используем debug для чувствительных данных
+        logger.debug(f"✅ {var} = {display_value}")
 
 if missing_vars:
     logger.critical("🚨 КРИТИЧЕСКАЯ ОШИБКА: Не хватает переменных окружения!")
     sys.exit(1)
 
-# Глобальная переменная для хранения application
-bot_application = None
 
-async def initialize_bot():
-    """Инициализирует и настраивает бота."""
-    global bot_application
+async def create_bot_application() -> "Application":
+    """Создает и настраивает экземпляр Application бота."""
     token = os.getenv("BOT_TOKEN")
 
     logger.info("🔧 [BOT] Создаем Application...")
@@ -184,53 +180,37 @@ async def initialize_bot():
     # Обработчик текстовых сообщений для "Настройки"
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
-    logger.info("🚀 Приложение бота инициализировано.")
-    bot_application = application
-    return application
+    logger.info("🚀 Приложение бота инициализировано и готово к запуску.")
+    return application # Возвращаем сконфигурированный, но не запущенный Application
 
 
-async def start_bot():
-    """Запускает бота."""
-    global bot_application
-    if not bot_application:
-        logger.error("❌ Приложение бота не инициализировано.")
-        return
-
+async def start_bot_application(application: "Application"):
+    """Запускает переданный экземпляр Application бота."""
     try:
         # Устанавливаем вебхук (URL должен быть настроен в .env)
         WEBHOOK_URL = os.getenv("WEBHOOK_URL")
         if WEBHOOK_URL:
             logger.info(f"🔗 Устанавливаем вебхук на {WEBHOOK_URL}")
-            await bot_application.bot.set_webhook(url=WEBHOOK_URL)
+            await application.bot.set_webhook(url=WEBHOOK_URL)
         else:
             logger.warning("⚠️ WEBHOOK_URL не установлен, вебхук не будет установлен.")
 
         logger.info("🚀 Запускаем приложение...")
-        await bot_application.start()
+        await application.start()
         logger.info("✅ Бот успешно запущен и работает через вебхук.")
-
-        # Не ждем бесконечно, так как это будет запущено в aiohttp приложении
-        # await asyncio.Event().wait()
 
     except Exception as e:
         logger.exception("💥 Ошибка при запуске бота:")
         raise
 
 
-async def stop_bot():
-    """Останавливает бота."""
-    global bot_application
-    if not bot_application:
-        logger.warning("⚠️ Приложение бота не инициализировано или уже остановлено.")
-        return
-
+async def stop_bot_application(application: "Application"):
+    """Останавливает переданный экземпляр Application бота."""
     logger.info("🛑 Останавливаем бота...")
     try:
-        await bot_application.stop()
+        await application.stop()
         logger.info("⏹️ Приложение остановлено.")
-        await bot_application.shutdown()
+        await application.shutdown()
         logger.info("🧹 Приложение закрыто.")
     except Exception as e:
         logger.error(f"❌ Ошибка при остановке бота: {e}")
-    finally:
-        bot_application = None
