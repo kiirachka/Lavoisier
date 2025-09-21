@@ -197,6 +197,29 @@ async def start_bot_application(application: "Application"):
 
         logger.info("🚀 Запускаем приложение...")
         await application.start()
+        
+        logger.info("🔄 Запускаем обработчик очереди обновлений...")
+        from telegram.ext import Updater  # Импортируем для доступа к _update_fetcher
+
+        async def _update_fetcher():
+            """Внутренний обработчик очереди обновлений."""
+            logger.debug("🔄 Начало внутреннего обработчика обновлений.")
+            try:
+                while True:
+                    update = await application.update_queue.get()
+                    logger.debug(f"📥 Получено обновление из очереди: {update}")
+                    await application.process_update(update)
+                    logger.debug("✅ Обновление обработано.")
+            except asyncio.CancelledError:
+                logger.info("🛑 Внутренний обработчик обновлений отменён.")
+                raise
+            except Exception as e:
+                logger.exception(f"💥 Ошибка в обработчике очереди обновлений: {e}")
+
+        # Создаем задачу для обработчика
+        application._update_fetcher_task = asyncio.create_task(_update_fetcher())
+        logger.info("✅ Внутренний обработчик очереди обновлений запущен.")
+        # --- КОНЕЦ ДОБАВЛЕНИЯ ---
         logger.info("✅ Бот успешно запущен и работает через вебхук.")
 
     except Exception as e:
@@ -208,6 +231,17 @@ async def stop_bot_application(application: "Application"):
     """Останавливает переданный экземпляр Application бота."""
     logger.info("🛑 Останавливаем бота...")
     try:
+                # --- ДОБАВЛЕНО ---
+        # Останавливаем внутренний обработчик обновлений
+        if hasattr(application, '_update_fetcher_task') and application._update_fetcher_task:
+            application._update_fetcher_task.cancel()
+            try:
+                await application._update_fetcher_task
+            except asyncio.CancelledError:
+                pass
+            logger.info("🛑 Внутренний обработчик очереди обновлений остановлен.")
+        # --- КОНЕЦ ДОБАВЛЕНИЯ ---
+        
         await application.stop()
         logger.info("⏹️ Приложение остановлено.")
         await application.shutdown()
