@@ -7,11 +7,14 @@ import logging
 from aiohttp import web
 from bot.main import create_bot_application, start_bot_application, stop_bot_application
 
-# Настройка логирования для run.py
+# --- Понижаем уровень логов для aiohttp.access ---
+aiohttp_access_logger = logging.getLogger("aiohttp.access")
+aiohttp_access_logger.setLevel(logging.WARNING)  # Будет писать только WARNING и ERROR
+# --- Конец изменения ---
+
+# Основной логгер
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-# Отдельный логгер для доступа к aiohttp
-access_logger = logging.getLogger("aiohttp.access")
 
 
 async def webhook_handler(request: web.Request) -> web.Response:
@@ -23,7 +26,7 @@ async def webhook_handler(request: web.Request) -> web.Response:
 
     try:
         update_data = await request.json()
-        logger.debug(f"📥 Вебхук получил обновление: {update_data}") # Временное подробное логирование
+        logger.debug(f"📥 Вебхук получил обновление: {update_data}")
         await app_bot.update_queue.put(update_data)
         logger.debug("✅ Обновление помещено в очередь бота.")
         return web.Response(status=200, text="OK")
@@ -49,9 +52,8 @@ async def start_bot_wrapper(app):
         logger.info("✅ Бот создан, инициализирован и запущен.")
     except Exception as e:
         logger.exception("💥 Критическая ошибка при создании/запуске бота:")
-        # Можно вызвать sys.exit(1) или поднять исключение, чтобы остановить aiohttp,
-        # но лучше пусть aiohttp продолжит работать для healthcheck
-        # raise
+        # Можно инициировать остановку приложения или повторные попытки
+        raise
 
 
 async def cleanup_bot_wrapper(app):
@@ -60,7 +62,7 @@ async def cleanup_bot_wrapper(app):
     if bot_app:
         logger.info("🛑 Очистка и остановка бота...")
         await stop_bot_application(bot_app)
-        app['bot_app'] = None # Очищаем ссылку
+        app['bot_app'] = None  # Очищаем ссылку
         logger.info("✅ Очистка завершена.")
     else:
         logger.info("ℹ️ Бот не был инициализирован или уже остановлен.")
@@ -73,7 +75,7 @@ def create_app() -> web.Application:
     # Роуты
     app.router.add_post("/webhook/{token}", webhook_handler)
     app.router.add_get("/heartbeat", healthcheck_handler)
-    app.router.add_get("/", healthcheck_handler) # Для Render health check
+    app.router.add_get("/", healthcheck_handler)  # Для Render health check
 
     # Сигналы
     app.on_startup.append(start_bot_wrapper)
@@ -83,8 +85,8 @@ def create_app() -> web.Application:
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000)) # Render использует PORT
+    port = int(os.getenv("PORT", 10000))  # Render использует PORT
     app = create_app()
 
     logger.info(f"🌍 aiohttp сервер запущен на порту {port}")
-    web.run_app(app, host="0.0.0.0", port=port, access_log=access_logger)
+    web.run_app(app, host="0.0.0.0", port=port)
