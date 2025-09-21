@@ -23,8 +23,9 @@ async def webhook_handler(request: web.Request) -> web.Response:
 
     try:
         update_data = await request.json()
-        # logger.debug(f"📥 Получено обновление: {update_data}") # Включить для отладки
+        logger.debug(f"📥 Вебхук получил обновление: {update_data}") # Временное подробное логирование
         await app_bot.update_queue.put(update_data)
+        logger.debug("✅ Обновление помещено в очередь бота.")
         return web.Response(status=200, text="OK")
     except Exception as e:
         logger.exception("💥 Ошибка обработки вебхука:")
