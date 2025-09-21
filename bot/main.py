@@ -98,7 +98,7 @@ async def main(return_app=False) -> None:
     except Exception as e:
         logger.error(f"❌ Ошибка при очистке старых инстансов: {e}")
 
-    # Управление инстансами
+    # Управление инстансам
     INSTANCE_ID = str(uuid.uuid4())
     logger.info(f"🔑 Этот инстанс имеет ID: {INSTANCE_ID}")
 
