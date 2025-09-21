@@ -5,31 +5,26 @@ import sys
 import asyncio
 import logging
 from aiohttp import web
-from bot.main import initialize_bot, start_bot, stop_bot, bot_application
+from bot.main import create_bot_application, start_bot_application, stop_bot_application
 
 # Настройка логирования для run.py
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+# Отдельный логгер для доступа к aiohttp
+access_logger = logging.getLogger("aiohttp.access")
 
-# run.py
 
 async def webhook_handler(request: web.Request) -> web.Response:
     """Обрабатывает вебхук от Telegram."""
-    url_token = request.match_info.get('token')
-    expected_token = os.getenv('BOT_TOKEN')
-
-    # Проверяем, совпадает ли токен полностью
-    if not expected_token or url_token != expected_token:
-        logger.warning(f"⚠️ Неверный токен в вебхуке: {url_token}")
-        return web.Response(status=403, text="Forbidden")
-
-    if not bot_application:
-        logger.error("❌ Бот не инициализирован.")
-        return web.Response(status=500, text="Bot not initialized")
+    app_bot = request.app.get('bot_app')
+    if not app_bot:
+        logger.error("❌ Application бота не найден в app['bot_app'].")
+        return web.Response(status=500, text="Bot Application not initialized")
 
     try:
         update_data = await request.json()
-        await bot_application.update_queue.put(update_data)
+        # logger.debug(f"📥 Получено обновление: {update_data}") # Включить для отладки
+        await app_bot.update_queue.put(update_data)
         return web.Response(status=200, text="OK")
     except Exception as e:
         logger.exception("💥 Ошибка обработки вебхука:")
@@ -42,24 +37,32 @@ async def healthcheck_handler(request: web.Request) -> web.Response:
 
 
 async def start_bot_wrapper(app):
-    """Запускает бота при старте aiohttp приложения."""
-    logger.info("🔄 Инициализация бота...")
+    """Создает и запускает бота при старте aiohttp приложения."""
+    logger.info("🔄 Создание и инициализация бота...")
     try:
-        await initialize_bot()
+        bot_app = await create_bot_application()
         logger.info("🚀 Запуск бота...")
-        await start_bot()
-        logger.info("✅ Бот запущен.")
+        await start_bot_application(bot_app)
+        # Сохраняем ссылку на Application в aiohttp app
+        app['bot_app'] = bot_app
+        logger.info("✅ Бот создан, инициализирован и запущен.")
     except Exception as e:
-        logger.exception("💥 Критическая ошибка при запуске бота:")
-        # В продакшене можно инициировать остановку приложения или повторные попытки
-        raise
+        logger.exception("💥 Критическая ошибка при создании/запуске бота:")
+        # Можно вызвать sys.exit(1) или поднять исключение, чтобы остановить aiohttp,
+        # но лучше пусть aiohttp продолжит работать для healthcheck
+        # raise
 
 
 async def cleanup_bot_wrapper(app):
     """Останавливает бота при завершении работы aiohttp приложения."""
-    logger.info("🛑 Очистка и остановка бота...")
-    await stop_bot()
-    logger.info("✅ Очистка завершена.")
+    bot_app = app.get('bot_app')
+    if bot_app:
+        logger.info("🛑 Очистка и остановка бота...")
+        await stop_bot_application(bot_app)
+        app['bot_app'] = None # Очищаем ссылку
+        logger.info("✅ Очистка завершена.")
+    else:
+        logger.info("ℹ️ Бот не был инициализирован или уже остановлен.")
 
 
 def create_app() -> web.Application:
@@ -83,4 +86,4 @@ if __name__ == "__main__":
     app = create_app()
 
     logger.info(f"🌍 aiohttp сервер запущен на порту {port}")
-    web.run_app(app, host="0.0.0.0", port=port)
+    web.run_app(app, host="0.0.0.0", port=port, access_log=access_logger)
