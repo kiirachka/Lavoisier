@@ -20,8 +20,12 @@ def validate_text(text: str) -> bool:
     allowed_pattern = r'^[a-zA-Zа-яА-Я0-9\s_.,!?;:()\-]+$'
     return bool(re.match(allowed_pattern, text))
 
+# Валидатор игрового ника — только латинские буквы, цифры, _
+def validate_nickname(nickname: str) -> bool:
+    """Проверяет, что ник содержит только латинские буквы, цифры и _."""
+    return bool(re.match(r'^[a-zA-Z0-9_]+$', nickname))
+
 async def start_application(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logger.info(f"📝 Пользователь {update.effective_user.id} начал заполнение анкеты")
     """Начинает процесс заполнения анкеты."""
     user_id = update.effective_user.id
     supabase = get_supabase()
@@ -61,7 +65,7 @@ async def receive_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     }).eq('user_id', user_id).execute()
     
     await update.message.reply_text(
-        "🔢 Сколько вам лет?"
+        "🔢 Введите ваш возраст (только цифры от 12 до 100):"
     )
     return AGE
 
@@ -97,17 +101,17 @@ async def receive_age(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     )
     return GAME_NICKNAME
 
-def validate_nickname(nickname: str) -> bool:
-    """Проверяет, что ник содержит только латинские буквы, цифры и _."""
-    return bool(re.match(r'^[a-zA-Z0-9_]+$', nickname))
-
-# В receive_game_nickname:
-if not validate_nickname(text):
-    await update.message.reply_text(
-        "❌ Ник может содержать только латинские буквы, цифры и _.\n"
-        "Попробуйте ещё раз:"
-    )
-    return GAME_NICKNAME
+async def receive_game_nickname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Получает игровой ник."""
+    user_id = update.effective_user.id
+    text = update.message.text.strip()
+    
+    if not validate_nickname(text):
+        await update.message.reply_text(
+            "❌ Ник может содержать только латинские буквы, цифры и _.\n"
+            "Попробуйте ещё раз:"
+        )
+        return GAME_NICKNAME
     
     supabase = get_supabase()
     supabase.table('temp_applications').update({
@@ -148,8 +152,12 @@ async def receive_why_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     data = response.data[0]
     
     # Получаем username
-    user = await context.bot.get_chat(user_id)
-    username = f"@{user.username}" if user.username else "—"
+    try:
+        user = await context.bot.get_chat(user_id)
+        username = f"@{user.username}" if user.username else "—"
+    except Exception as e:
+        logger.error(f"Ошибка при получении username: {e}")
+        username = "—"
     
     # Формируем сообщение для админов
     admin_message = (
