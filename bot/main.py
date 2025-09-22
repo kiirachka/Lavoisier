@@ -239,7 +239,7 @@ async def start_bot_application(application: "Application", app_context: dict):
         app_context['_update_fetcher_task'] = fetcher_task
         logger.info("✅ Внутренний обработчик очереди обновлений запущен.")
 
-        logger.info("✅ Бот успешно запущен и работает через вебхук.")
+    logger.info("✅ Бот успешно запущен и работает через вебхук.")
 
     except Exception as e:
         logger.exception("💥 Ошибка при запуске бота:")
