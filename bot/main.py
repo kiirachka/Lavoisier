@@ -202,6 +202,8 @@ async def create_bot_application() -> "Application":
     return application
 
 
+# bot/main.py
+
 async def start_bot_application(application: "Application", app_context: dict):
     """Запускает переданный экземпляр Application бота."""
     try:
@@ -238,13 +240,12 @@ async def start_bot_application(application: "Application", app_context: dict):
         app_context['_update_fetcher_task'] = fetcher_task
         logger.info("✅ Внутренний обработчик очереди обновлений запущен.")
 
-    logger.info("✅ Бот успешно запущен и работает через вебхук.")
+        logger.info("✅ Бот успешно запущен и работает через вебхук.")
 
     except Exception as e:
         logger.exception("💥 Ошибка при запуске бота:")
         raise
-
-
+        
 async def stop_bot_application(application: "Application", app_context: dict):
     """Останавливает переданный экземпляр Application бота."""
     logger.info("🛑 Останавливаем бота...")
