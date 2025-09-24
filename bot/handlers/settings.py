@@ -12,13 +12,13 @@ async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     supabase = get_supabase()
 
     # Получаем текущий статус пользователя из БД
-    user_data = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
-
-    if not user_data.data:
+    response = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
+    
+    if not response.data:
         await update.message.reply_text("❌ Ошибка: пользователь не найден.")
         return
 
-    can_receive = user_data.data[0]['can_receive_broadcast']
+    can_receive = response.data[0]['can_receive_broadcast']
     status_text = "🔕 Рассылка отключена" if not can_receive else "🔔 Рассылка включена"
 
     keyboard = [
@@ -40,12 +40,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if query.data == "toggle_broadcast":
         # Получаем текущий статус
-        user_data = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
-        if not user_data.data:
+        response = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
+        if not response.data:
             await query.edit_message_text("❌ Ошибка: пользователь не найден.")
             return
 
-        current_status = user_data.data[0]['can_receive_broadcast']
+        current_status = response.data[0]['can_receive_broadcast']
         new_status = not current_status
 
         # Обновляем статус в БД
