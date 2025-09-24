@@ -1,7 +1,10 @@
-#!/usr/bin/env python3
 # run.py
-import os
+print("🟢 [RUN.PY] Старт run.py...")
 import sys
+print(f"🟢 [RUN.PY] Python executable: {sys.executable}")
+print(f"🟢 [RUN.PY] Python version: {sys.version}")
+print(f"🟢 [RUN.PY] Current directory: {sys.path[0]}")
+import os
 import asyncio
 import logging
 from aiohttp import web
