@@ -27,13 +27,15 @@ def get_supabase() -> Client:
 
 # bot/database/core.py
 
+# bot/database/core.py
+
 async def create_user_if_not_exists(user: TgUser) -> None:
     """Добавляет пользователя в базу данных, если его там еще нет."""
-    logger.info(f"Проверка пользователя {user.id} в БД...")
+    logger.info(f"🔍 Проверка пользователя {user.id} в БД...")
     
     supabase_client = get_supabase()
     if not supabase_client:
-        logger.error("Не удалось подключиться к Supabase")
+        logger.error("❌ Не удалось подключиться к Supabase")
         return
     
     try:
@@ -41,7 +43,7 @@ async def create_user_if_not_exists(user: TgUser) -> None:
         user_exists = supabase_client.table('users').select('user_id').eq('user_id', user.id).execute()
         
         if not user_exists.data:
-            logger.info(f"Пользователь {user.id} не найден, создаем...")
+            logger.info(f"🆕 Пользователь {user.id} не найден, создаем...")
             new_user = {
                 "user_id": user.id,
                 "username": user.username,
@@ -49,10 +51,10 @@ async def create_user_if_not_exists(user: TgUser) -> None:
                 "last_name": user.last_name,
             }
             result = supabase_client.table('users').insert(new_user).execute()
-            logger.info(f"Пользователь {user.id} добавлен в БД. Результат: {result}")
+            logger.info(f"✅ Пользователь {user.id} добавлен в БД. Результат: {result}")
         else:
-            logger.info(f"Пользователь {user.id} уже существует в БД")
+            logger.info(f"✅ Пользователь {user.id} уже существует в БД")
             
     except Exception as e:
-        logger.error(f"Ошибка при работе с БД для пользователя {user.id}: {e}", exc_info=True) # exc_info=True для трассировки
+        logger.error(f"💥 Ошибка при работе с БД для пользователя {user.id}: {e}", exc_info=True)
 
