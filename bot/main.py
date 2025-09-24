@@ -226,9 +226,12 @@ async def start_bot_application(application: "Application", app_context: dict):
             try:
                 while True:
                     update = await application.update_queue.get()
-                    logger.info(f"📥 Получено обновление из очереди: {update}")
-                    await application.process_update(update)
-                    logger.info("✅ Обновление обработано.")
+    logger.info(f"📥 Получено обновление из очереди: {update}")
+    try:
+        await application.process_update(update)
+        logger.info("✅ Обновление обработано.")
+    except Exception as e:
+        logger.exception(f"💥 Ошибка при обработке обновления: {e}")
             except asyncio.CancelledError:
                 logger.info("🛑 Внутренний обработчик обновлений отменён.")
                 raise
