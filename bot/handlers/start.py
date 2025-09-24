@@ -4,7 +4,7 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
 from bot.database.core import create_user_if_not_exists
 
-logger = logging.getLogger(__name__) # Добавьте логгер, если его нет
+logger = logging.getLogger(__name__)
 
 # Клавиатура главного меню с эмодзи
 main_keyboard = [
@@ -15,7 +15,7 @@ reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает команду /start и показывает главное меню."""
-    logger.info(f"📥 Получена команда /start от пользователя {update.effective_user.id}")  # ← ДОБАВЛЕНО
+    logger.info(f"📥 Получена команда /start от пользователя {update.effective_user.id}")
     try:
         # Регистрируем/проверяем пользователя в БД
         user = update.effective_user
@@ -33,7 +33,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 Выбери пункт в меню ниже ↓
         """
- await update.message.reply_text(welcome_text, reply_markup=reply_markup)
-        logger.info(f"📤 Отправлено приветственное сообщение пользователю {user.id}")  # ← ДОБАВЛЕНО
+        await update.message.reply_text(welcome_text, reply_markup=reply_markup)
+        logger.info(f"📤 Отправлено приветственное сообщение пользователю {user.id}")
     except Exception as e:
         logger.exception(f"💥 Ошибка в обработчике /start для пользователя {update.effective_user.id}: {e}")
