@@ -1,9 +1,9 @@
-FROM python:3.11-slim-bullseye
+FROM python:3.13-slim
 
-WORKDIR /app
+WORKDIR /opt/render/project/src
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 COPY . .
 
