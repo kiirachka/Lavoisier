@@ -206,6 +206,8 @@ async def create_bot_application() -> "Application":
 
 # bot/main.py
 
+# bot/main.py
+
 async def start_bot_application(application: "Application", app_context: dict):
     """Запускает переданный экземпляр Application бота."""
     try:
