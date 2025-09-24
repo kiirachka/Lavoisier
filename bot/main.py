@@ -1,4 +1,4 @@
-# bot/main.py
+print("🟢 [BOT.MAIN] Импорт bot/main.py начался...")
 import asyncio
 import os
 import sys
@@ -55,7 +55,6 @@ from bot.handlers.appeal import (
 )
 from bot.handlers.admin_reply import handle_admin_reply
 
-# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
