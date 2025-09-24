@@ -204,10 +204,6 @@ async def create_bot_application() -> "Application":
 
 # bot/main.py
 
-# bot/main.py
-
-# bot/main.py
-
 async def start_bot_application(application: "Application", app_context: dict):
     """Запускает переданный экземпляр Application бота."""
     try:
@@ -242,6 +238,16 @@ async def start_bot_application(application: "Application", app_context: dict):
             except Exception as e:
                 logger.exception(f"💥 Ошибка в обработчике очереди обновлений: {e}")
 
+        # Запускаем задачу и сохраняем её в app_context
+        fetcher_task = asyncio.create_task(_update_fetcher())
+        app_context['_update_fetcher_task'] = fetcher_task
+        logger.info("✅ Внутренний обработчик очереди обновлений запущен.")
+
+        logger.info("✅ Бот успешно запущен и работает через вебхук.")
+
+    except Exception as e:
+        logger.exception("💥 Ошибка при запуске бота:")
+        raise
         # Запускаем задачу и сохраняем её в app_context
         fetcher_task = asyncio.create_task(_update_fetcher())
         app_context['_update_fetcher_task'] = fetcher_task
