@@ -5,6 +5,7 @@ import sys
 import logging
 import uuid
 import functools
+from datetime import datetime, timedelta, timezone
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -126,7 +127,6 @@ async def create_bot_application() -> "Application":
     # Автоочистка: удаляем инстансы старше 1 часа
     logger.info("🧹 Очищаем старые инстансы (старше 1 часа)...")
     try:
-        from datetime import datetime, timedelta, timezone
         one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         supabase.table("bot_instances").delete().lt("started_at", one_hour_ago).execute()
         logger.info("✅ Старые инстансы удалены.")
@@ -202,8 +202,6 @@ async def create_bot_application() -> "Application":
     return application
 
 
-# bot/main.py
-
 async def start_bot_application(application: "Application", app_context: dict):
     """Запускает переданный экземпляр Application бота."""
     try:
@@ -248,46 +246,8 @@ async def start_bot_application(application: "Application", app_context: dict):
     except Exception as e:
         logger.exception("💥 Ошибка при запуске бота:")
         raise
-        # Запускаем задачу и сохраняем её в app_context
-        fetcher_task = asyncio.create_task(_update_fetcher())
-        app_context['_update_fetcher_task'] = fetcher_task
-        logger.info("✅ Внутренний обработчик очереди обновлений запущен.")
 
-        logger.info("✅ Бот успешно запущен и работает через вебхук.")
 
-    except Exception as e:
-        logger.exception("💥 Ошибка при запуске бота:")
-        raise
-
-        async def _update_fetcher():
-            """Внутренний обработчик очереди обновлений."""
-            logger.info("🔄 Начало внутреннего обработчика обновлений.")
-            try:
-                while True:
-                    update = await application.update_queue.get()
-        logger.info(f"📥 Получено обновление из очереди: {update}")
-        try:
-        await application.process_update(update)
-        logger.info("✅ Обновление обработано.")
-    except Exception as e:
-        logger.exception(f"💥 Ошибка при обработке обновления: {e}")
-            except asyncio.CancelledError:
-                logger.info("🛑 Внутренний обработчик обновлений отменён.")
-                raise
-            except Exception as e:
-                logger.exception(f"💥 Ошибка в обработчике очереди обновлений: {e}")
-
-        # Запускаем задачу и сохраняем её в app_context
-        fetcher_task = asyncio.create_task(_update_fetcher())
-        app_context['_update_fetcher_task'] = fetcher_task
-        logger.info("✅ Внутренний обработчик очереди обновлений запущен.")
-
-        logger.info("✅ Бот успешно запущен и работает через вебхук.")
-
-    except Exception as e:
-        logger.exception("💥 Ошибка при запуске бота:")
-        raise
-        
 async def stop_bot_application(application: "Application", app_context: dict):
     """Останавливает переданный экземпляр Application бота."""
     logger.info("🛑 Останавливаем бота...")
