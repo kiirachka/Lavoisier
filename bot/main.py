@@ -144,16 +144,25 @@ async def create_bot_application() -> "Application":
         logger.error(f"❌ Ошибка при регистрации текущего инстанса: {e}")
 
     # Регистрация обработчиков — ПОРЯДОК ВАЖЕН!
+    
+    # Команды (с логированием)
+    application.add_handler(CommandHandler("start", log_handler(start)))
+    application.add_handler(CommandHandler("settings", log_handler(settings_menu)))
+    application.add_handler(CallbackQueryHandler(log_handler(button_handler)))
+    application.add_handler(CommandHandler("list_all", log_handler(list_all_users)))
+    application.add_handler(CommandHandler("list_squad", log_handler(list_squad)))
+    application.add_handler(CommandHandler("list_city", log_handler(list_city)))
+    application.add_handler(CommandHandler("add_to_squad", log_handler(add_to_squad)))
+    application.add_handler(CommandHandler("add_to_city", log_handler(add_to_city)))
+    application.add_handler(CommandHandler("remove_from_squad", log_handler(remove_from_squad)))
+    application.add_handler(CommandHandler("remove_from_city", log_handler(remove_from_city)))
+    application.add_handler(CommandHandler("broadcast_all", log_handler(broadcast_all)))
+    application.add_handler(CommandHandler("broadcast_squad", log_handler(broadcast_squad)))
+    application.add_handler(CommandHandler("broadcast_city", log_handler(broadcast_city)))
+    application.add_handler(CommandHandler("broadcast_starly", log_handler(broadcast_starly)))
 
-    # Обработчик ответа админа
-    application.add_handler(
-        MessageHandler(
-            filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
-            handle_admin_reply,
-        )
-    )
 
-    # FSM для анкеты
+        # FSM для анкеты
     application.add_handler(
         ConversationHandler(
             entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
@@ -179,21 +188,18 @@ async def create_bot_application() -> "Application":
         )
     )
 
-    # Команды (с логированием)
-    application.add_handler(CommandHandler("start", log_handler(start)))
-    application.add_handler(CommandHandler("settings", log_handler(settings_menu)))
-    application.add_handler(CallbackQueryHandler(log_handler(button_handler)))
-    application.add_handler(CommandHandler("list_all", log_handler(list_all_users)))
-    application.add_handler(CommandHandler("list_squad", log_handler(list_squad)))
-    application.add_handler(CommandHandler("list_city", log_handler(list_city)))
-    application.add_handler(CommandHandler("add_to_squad", log_handler(add_to_squad)))
-    application.add_handler(CommandHandler("add_to_city", log_handler(add_to_city)))
-    application.add_handler(CommandHandler("remove_from_squad", log_handler(remove_from_squad)))
-    application.add_handler(CommandHandler("remove_from_city", log_handler(remove_from_city)))
-    application.add_handler(CommandHandler("broadcast_all", log_handler(broadcast_all)))
-    application.add_handler(CommandHandler("broadcast_squad", log_handler(broadcast_squad)))
-    application.add_handler(CommandHandler("broadcast_city", log_handler(broadcast_city)))
-    application.add_handler(CommandHandler("broadcast_starly", log_handler(broadcast_starly)))
+    
+    # Обработчик ответа админа
+    application.add_handler(
+        MessageHandler(
+            filters.REPLY & filters.TEXT & filters.ChatType.GROUPS,
+            handle_admin_reply,
+        )
+    )
+
+
+
+
 
     # Обработчик текстовых сообщений для "Настройки"
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
