@@ -75,12 +75,20 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     data = response.data[0]
     
+    # Получаем информацию о пользователе
+    user = update.effective_user
+    username = f"@{user.username}" if user.username else "Без username"
+    first_name = user.first_name or ""
+    last_name = user.last_name or ""
+    full_name = f"{first_name} {last_name}".strip()
+    
     # Формируем сообщение для админов
     admin_message = (
         f"📬 Новое обращение!\n\n"
         f"👤 Кто: {data['user_type']}\n"
         f"💬 Сообщение:\n{text}\n\n"
-        f"🆔 ID: {user_id} | {username}"
+        f"🆔 ID: {user_id} | {username}\n"
+        f"👤 Имя: {full_name}"
     )
     
     # Отправляем в админ-чат
@@ -95,6 +103,7 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             logger.error(f"Ошибка при отправке в админ-чат: {e}")
             await update.message.reply_text("❌ Ошибка при отправке обращения. Попробуйте позже.")
     else:
+        logger.warning("ADMIN_CHAT_ID не установлен")
         await update.message.reply_text("❌ Админ-чат не настроен.")
     
     # Удаляем временную запись
