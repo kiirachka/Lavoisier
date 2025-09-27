@@ -131,3 +131,19 @@ if __name__ == "__main__":
     except Exception as e:
         logger.exception(f"💥 Критическая ошибка: {e}")
         sys.exit(1)
+
+async def init_app():
+    """Инициализация приложения."""
+    global bot_application, app_context
+    
+    logger.info("🔄 Создание и инициализация бота...")
+    
+    # Создаем приложение бота
+    bot_application = await create_bot_application()
+    
+    # ПРОВЕРКА ВЕБХУКА
+    webhook_info = await bot_application.bot.get_webhook_info()
+    logger.info(f"🌐 Информация о вебхуке: {webhook_info}")
+    
+    logger.info("🚀 Запуск бота...")
+    await start_bot_application(bot_application, app_context)
