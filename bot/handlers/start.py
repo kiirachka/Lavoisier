@@ -1,27 +1,16 @@
-# bot/handlers/start.py
-import logging
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import ContextTypes
-from bot.database.core import create_user_if_not_exists
-
-logger = logging.getLogger(__name__)
-
-# Клавиатура главного меню с эмодзи
-main_keyboard = [
-    ["🤖 О боте", "📝 Анкета", "📨 Обращение"],
-    ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
-]
-reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает команду /start и показывает главное меню."""
     logger.info(f"📥 Получена команда /start от пользователя {update.effective_user.id}")
+    
     try:
+        # Добавьте логирование для отладки
+        logger.info(f"🔄 Обработка пользователя: {update.effective_user.username}, ID: {update.effective_user.id}")
+        
         # Регистрируем/проверяем пользователя в БД
         user = update.effective_user
-        await create_user_if_not_exists(user)
-        logger.info(f"✅ Пользователь {user.id} обработан.")
-
+        db_user = await create_user_if_not_exists(user)
+        logger.info(f"✅ Пользователь {user.id} обработан. DB result: {db_user is not None}")
+        
         welcome_text = """
 Привет! 👋 Я бот для сообщества Старли.
 
@@ -33,7 +22,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 Выбери пункт в меню ниже ↓
         """
-        await update.message.reply_text(welcome_text, reply_markup=reply_markup)
-        logger.info(f"📤 Отправлено приветственное сообщение пользователю {user.id}")
+        
+        sent_message = await update.message.reply_text(welcome_text, reply_markup=reply_markup)
+        logger.info(f"📤 Отправлено приветственное сообщение пользователю {user.id}. Message ID: {sent_message.message_id}")
+        
     except Exception as e:
-        logger.exception(f"💥 Ошибка в обработчике /start для пользователя {update.effective_user.id}: {e}")
+        logger.exception(f"💥 Критическая ошибка в обработчике /start для пользователя {update.effective_user.id}: {e}")
+        # Попробуем отправить сообщение об ошибке
+        try:
+            await update.message.reply_text("❌ Произошла ошибка. Попробуйте позже.")
+        except:
+            pass
