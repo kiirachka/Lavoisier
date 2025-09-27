@@ -1,3 +1,18 @@
+# bot/handlers/start.py
+import logging
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import ContextTypes
+from bot.database.core import create_user_if_not_exists
+
+logger = logging.getLogger(__name__)
+
+# Клавиатура главного меню с эмодзи
+main_keyboard = [
+    ["🤖 О боте", "📝 Анкета", "📨 Обращение"],
+    ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
+]
+reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает команду /start и показывает главное меню."""
     logger.info(f"📥 Получена команда /start от пользователя {update.effective_user.id}")
