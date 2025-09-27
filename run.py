@@ -1,111 +1,133 @@
-# run.py
-print("🟢 [RUN.PY] Старт run.py...")
-import sys
-print(f"🟢 [RUN.PY] Python executable: {sys.executable}")
-print(f"🟢 [RUN.PY] Python version: {sys.version}")
-print(f"🟢 [RUN.PY] Current directory: {sys.path[0]}")
-import os
 import asyncio
 import logging
+import sys
+import os
 from aiohttp import web
+from telegram.ext import Application
+from bot.main import create_bot_application, start_bot_application, stop_bot_application
 
-# --- Настройка базового логирования ---
+# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
-# --- Импорты бота с обработкой ошибок ---
-try:
-    logger.info("🔄 Импортируем основной модуль бота...")
-    from bot.main import create_bot_application, start_bot_application, stop_bot_application
-    logger.info("✅ Основной модуль бота успешно импортирован.")
-except ImportError as e:
-    logger.error(f"❌ Не удалось импортировать bot.main: {e}")
-    logger.error("💡 Проверьте, что все файлы бота находятся в правильных местах и нет синтаксических ошибок.")
-    sys.exit(1)
-except Exception as e:
-    logger.exception(f"💥 Непредвиденная ошибка при импорте bot.main: {e}")
-    sys.exit(1)
+# Глобальные переменные
+bot_application = None
+app_context = {}
 
-# --- Обработчики aiohttp ---
-async def webhook_handler(request: web.Request) -> web.Response:
-    """Обрабатывает вебхук от Telegram."""
-    app_bot = request.app.get('bot_app')
-    if not app_bot:
-        logger.error("❌ Application бота не найден в app['bot_app'].")
-        return web.Response(status=500, text="Bot Application not initialized")
+# Создаем глобальное приложение aiohttp
+app = web.Application()
 
+async def webhook_handler(request):
+    """Обработчик вебхуков от Telegram."""
     try:
-        update_data = await request.json()
-        logger.info(f"📥 Вебхук получил обновление.")
-        await app_bot.update_queue.put(update_data)
-        logger.debug("✅ Обновление помещено в очередь бота.")
-        return web.Response(status=200, text="OK")
+        logger.info("📥 Вебхук получил обновление.")
+        
+        # Получаем JSON из тела запроса
+        update_json = await request.json()
+        
+        # Отправляем обновление в приложение Telegram
+        if bot_application:
+            await bot_application.update_queue.put(update_json)
+            logger.info(f"✅ Обновление отправлено в очередь: {update_json.get('update_id', 'unknown')}")
+        else:
+            logger.error("❌ Приложение бота не инициализировано!")
+        
+        return web.Response(text="OK")
     except Exception as e:
-        logger.exception("💥 Ошибка обработки вебхука:")
-        return web.Response(status=500, text="Internal Server Error")
+        logger.exception(f"💥 Ошибка в обработчике вебхука: {e}")
+        return web.Response(text="Error", status=500)
 
+async def heartbeat_handler(request):
+    """Обработчик для проверки работоспособности."""
+    return web.Response(text="Bot is running", status=200)
 
-async def healthcheck_handler(request: web.Request) -> web.Response:
-    """Обработчик для проверки состояния сервиса."""
-    return web.Response(text="OK")
-
-
-async def start_bot_wrapper(app):
-    """Создает и запускает бота при старте aiohttp приложения."""
+async def init_app():
+    """Инициализация приложения."""
+    global bot_application, app_context
+    
     logger.info("🔄 Создание и инициализация бота...")
+    
+    # Создаем приложение бота
+    bot_application = await create_bot_application()
+    
+    logger.info("🚀 Запуск бота...")
+    await start_bot_application(bot_application, app_context)
+    
+    logger.info("✅ Бот создан, инициализирован и запущен.")
+
+def setup_routes():
+    """Настройка маршрутов."""
+    # Извлекаем токен из переменной окружения
+    bot_token = os.getenv("BOT_TOKEN")
+    if not bot_token:
+        logger.error("❌ BOT_TOKEN не установлен!")
+        sys.exit(1)
+    
+    # Регистрируем маршрут вебхука
+    webhook_path = f"/webhook/{bot_token}"
+    app.router.add_post(webhook_path, webhook_handler)
+    
+    # Регистрируем маршрут проверки
+    app.router.add_get('/heartbeat', heartbeat_handler)
+    app.router.add_get('/', heartbeat_handler)
+    
+    logger.info(f"🌍 Маршрут вебхука: {webhook_path}")
+
+async def start_server():
+    """Запуск сервера."""
+    # Инициализируем приложение
+    await init_app()
+    
+    # Настраиваем маршруты
+    setup_routes()
+    
+    # Получаем порт из переменной окружения (Render устанавливает PORT)
+    port = int(os.environ.get("PORT", 10000))
+    
+    logger.info(f"🌍 aiohttp сервер запущен на порту {port}")
+    
+    # Запускаем сервер
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    
+    logger.info(f"✅ Сервер запущен и слушает порт {port}")
+    
+    # Оставляем сервер работать
     try:
-        bot_app = await create_bot_application()
-        logger.info("🚀 Запуск бота...")
-        await start_bot_application(bot_app, app)  # Передаём aiohttp app как app_context
-        # Сохраняем ссылку на Application в aiohttp app
-        app['bot_app'] = bot_app
-        logger.info("✅ Бот создан, инициализирован и запущен.")
-    except Exception as e:
-        logger.exception("💥 Критическая ошибка при создании/запуске бота:")
-        raise
+        await asyncio.Future()  # Бесконечное ожидание
+    except KeyboardInterrupt:
+        logger.info("🛑 Получен сигнал остановки...")
+    finally:
+        await stop_server(runner)
 
-
-async def cleanup_bot_wrapper(app):
-    """Останавливает бота при завершении работы aiohttp приложения."""
-    bot_app = app.get('bot_app')
-    if bot_app:
-        logger.info("🛑 Очистка и остановка бота...")
-        await stop_bot_application(bot_app, app)
-        app['bot_app'] = None  # Очищаем ссылку
-        logger.info("✅ Очистка завершена.")
-    else:
-        logger.info("ℹ️ Бот не был инициализирован или уже остановлен.")
-
-
-def create_app() -> web.Application:
-    """Создает aiohttp приложение."""
-    app = web.Application()
-
-    # Роуты
-    app.router.add_post("/webhook/{token}", webhook_handler)
-    app.router.add_get("/heartbeat", healthcheck_handler)
-    app.router.add_get("/", healthcheck_handler)  # Для Render health check
-
-    # Сигналы
-    app.on_startup.append(start_bot_wrapper)
-    app.on_cleanup.append(cleanup_bot_wrapper)
-
-    return app
-
+async def stop_server(runner):
+    """Остановка сервера."""
+    logger.info("🛑 Останавливаем сервер...")
+    await runner.cleanup()
+    if bot_application:
+        await stop_bot_application(bot_application, app_context)
+    logger.info("✅ Сервер остановлен.")
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 10000))  # Render использует PORT
-    app = create_app()
-
-    logger.info(f"🌍 aiohttp сервер запущен на порту {port}")
+    logger.info("🟢 [RUN.PY] Старт run.py...")
+    logger.info(f"🟢 [RUN.PY] Python executable: {sys.executable}")
+    logger.info(f"🟢 [RUN.PY] Python version: {sys.version}")
+    logger.info(f"🟢 [RUN.PY] Current directory: {os.getcwd()}")
+    
     try:
-        web.run_app(app, host="0.0.0.0", port=port)
-    except KeyboardInterrupt:
-        logger.info("👋 Сервер остановлен пользователем.")
+        logger.info("🔄 Импортируем основной модуль бота...")
+        from bot.main import create_bot_application, start_bot_application, stop_bot_application
+        logger.info("✅ Основной модуль бота успешно импортирован.")
+        
+        # Запускаем сервер
+        asyncio.run(start_server())
+        
     except Exception as e:
-        logger.exception(f"💥 Критическая ошибка в работе aiohttp сервера: {e}")
+        logger.exception(f"💥 Критическая ошибка: {e}")
         sys.exit(1)
