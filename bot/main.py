@@ -218,29 +218,8 @@ async def start_bot_application(application: "Application", app_context: dict):
 
         logger.info("🔄 Запускаем обработчик очереди обновлений...")
 
-        async def _update_fetcher():
-            """Внутренний обработчик очереди обновлений."""
-            logger.info("🔄 Начало внутреннего обработчика обновлений.")
-            try:
-                while True:
-                    update = await application.update_queue.get()
-                    logger.info(f"📥 Получено обновление из очереди: {update}")
-                    try:
-                        await application.process_update(update)
-                        logger.info("✅ Обновление обработано.")
-                    except Exception as e:
-                        logger.exception(f"💥 Ошибка при обработке обновления: {e}")
-            except asyncio.CancelledError:
-                logger.info("🛑 Внутренний обработчик обновлений отменён.")
-                raise
-            except Exception as e:
-                logger.exception(f"💥 Ошибка в обработчике очереди обновлений: {e}")
-
-        # Запускаем задачу и сохраняем её в app_context
-        fetcher_task = asyncio.create_task(_update_fetcher())
-        app_context['_update_fetcher_task'] = fetcher_task
-        logger.info("✅ Внутренний обработчик очереди обновлений запущен.")
-
+        # Для вебхук-режима обработчик очереди не нужен - Telegram сам отправляет обновления
+        # Удаляем ручной обработчик очереди, т.к. вебхуки обрабатываются через aiohttp
         logger.info("✅ Бот успешно запущен и работает через вебхук.")
 
     except Exception as e:
@@ -252,16 +231,6 @@ async def stop_bot_application(application: "Application", app_context: dict):
     """Останавливает переданный экземпляр Application бота."""
     logger.info("🛑 Останавливаем бота...")
     try:
-        # Останавливаем внутренний обработчик обновлений
-        task = app_context.pop('_update_fetcher_task', None)
-        if task:
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-            logger.info("🛑 Внутренний обработчик очереди обновлений остановлен.")
-
         await application.stop()
         logger.info("⏹️ Приложение остановлено.")
         await application.shutdown()
