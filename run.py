@@ -75,8 +75,8 @@ async def heartbeat_handler(request):
 async def setup_app():
     """Настраивает aiohttp приложение."""
     app = web.Application()
+    # Добавляем только один обработчик для /heartbeat - он будет работать и для GET и для HEAD
     app.router.add_get('/heartbeat', heartbeat_handler)
-    app.router.add_head('/heartbeat', heartbeat_handler)
     app.router.add_get('/', heartbeat_handler)
     return app
 
