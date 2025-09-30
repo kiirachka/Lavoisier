@@ -32,9 +32,11 @@ def format_user_list(users: list) -> str:
             name = "Без имени"
         
         username = f"@{user['username']}" if user.get('username') else "—"
+        # Используем одинарные кавычки для внутренних ключей словаря, чтобы избежать конфликта
         line = f"• {name} {username} (ID: {user['user_id']}) — {formatted_date}"
         lines.append(line)
     
+    # Используем двойной символ новой строки для лучшего форматирования
     return "
 ".join(lines)
 
@@ -57,7 +59,8 @@ async def list_all_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     response = supabase.table('users').select('user_id, username, first_name, last_name, created_at').order('created_at', desc=True).execute()
     users = response.data or []
 
-    text = "📋 *Все пользователи:*\n" + format_user_list(users)
+    text = "📋 *Все пользователи:*
+" + format_user_list(users)
     await update.message.reply_text(text, parse_mode="Markdown")
 
 async def list_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -69,7 +72,8 @@ async def list_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     response = supabase.table('users').select('user_id, username, first_name, last_name, created_at').eq('is_in_squad', True).order('created_at', desc=True).execute()
     users = response.data or []
 
-    text = "🛡️ *Участники сквада:*\n" + format_user_list(users)
+    text = "🛡️ *Участники сквада:*
+" + format_user_list(users)
     await update.message.reply_text(text, parse_mode="Markdown")
 
 async def list_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -81,7 +85,8 @@ async def list_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     response = supabase.table('users').select('user_id, username, first_name, last_name, created_at').eq('is_in_city', True).order('created_at', desc=True).execute()
     users = response.data or []
 
-    text = "🏙️ *Участники города:*\n" + format_user_list(users)
+    text = "🏙️ *Участники города:*
+" + format_user_list(users)
     await update.message.reply_text(text, parse_mode="Markdown")
 
 async def add_to_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -208,7 +213,7 @@ async def remove_from_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     supabase.table('users').update({'is_in_city': False}).eq('user_id', user_id).execute()
     await update.message.reply_text(f"✅ Пользователь {identifier} удалён из города.")
 
-# === ФУНКЦИИ БАНА ===
+# === ФУНКЦИИ БАНА (не забудьте добавить их в bot/main.py) ===
 async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Блокирует пользователя полностью."""
     if update.effective_user.id not in get_admin_ids():
