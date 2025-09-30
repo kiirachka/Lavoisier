@@ -22,9 +22,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = update.effective_user.id
         # ИСПОЛЬЗУЕМ get_supabase, которая теперь импортирована
         supabase = get_supabase()
+        # ПРАВИЛЬНО: используем response.data
         response = supabase.table('users').select('is_banned, banned_features').eq('user_id', user_id).execute()
         
-        if response.
+        if response.data:  # <- ПРАВИЛЬНО: проверяем response.data, а не response.
             user_data = response.data[0]
             if user_data.get('is_banned'):
                 await update.message.reply_text("❌ Вы заблокированы и не можете пользоваться ботом.")
