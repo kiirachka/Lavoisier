@@ -2,7 +2,8 @@
 import logging
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
-from bot.database.core import create_user_if_not_exists
+# ИМПОРТИРУЕМ get_supabase из bot.database.core
+from bot.database.core import create_user_if_not_exists, get_supabase
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +20,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         # Проверяем бан
         user_id = update.effective_user.id
+        # ИСПОЛЬЗУЕМ get_supabase, которая теперь импортирована
         supabase = get_supabase()
         response = supabase.table('users').select('is_banned, banned_features').eq('user_id', user_id).execute()
         
-        if response.data:
+        if response.
             user_data = response.data[0]
             if user_data.get('is_banned'):
                 await update.message.reply_text("❌ Вы заблокированы и не можете пользоваться ботом.")
@@ -67,6 +69,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.info(f"🔄 Обработка пользователя: {update.effective_user.username}, ID: {update.effective_user.id}")
         # Регистрируем/проверяем пользователя в БД
         user = update.effective_user
+        # create_user_if_not_exists теперь также может использовать get_supabase, если она правильно импортирована внутри
         db_user = await create_user_if_not_exists(user)
         logger.info(f"✅ Пользователь {user.id} обработан. DB result: {db_user is not None}")
         welcome_text = """
