@@ -36,7 +36,7 @@ def format_user_list(users: list) -> str:
         line = f"- {name} {username} (ID: {user['user_id']}) - {formatted_date}"
         lines.append(line)
 
-    # Используем стандартные кавычки для символа новой строки
+    # Используем стандартные кавычки для символа новой строк
     return "\n".join(lines)
 
 async def _get_user_id_by_username(username: str) -> int:
