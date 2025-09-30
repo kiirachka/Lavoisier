@@ -13,7 +13,7 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Проверяем, что это ответ на сообщение
     if not update.message.reply_to_message:
         return
-    
+
     # Проверяем, что это админ
     admin_ids = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit()]
     if update.effective_user.id not in admin_ids:
@@ -32,6 +32,17 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     user_id = int(user_id_match.group(1))
     admin_reply_text = update.message.text
+
+    # --- ДОБАВЛЕНО: Проверка, не заблокирован ли пользователь ---
+    supabase = get_supabase()
+    user_check_response = supabase.table('users').select('is_banned, banned_features').eq('user_id', user_id).execute()
+    if user_check_response.data:
+        user_data = user_check_response.data[0]
+        if user_data.get('is_banned') or 'all' in user_data.get('banned_features', []):
+            # Пользователь заблокирован, не отправляем
+            await update.message.reply_text("⚠️ Пользователь заблокирован, сообщение не отправлено.")
+            return # или логируем, что не отправлено
+    # --- КОНЕЦ ДОБАВЛЕНИЯ ---
 
     # Определяем тип сообщения (анкета или обращение)
     message_type = "анкету" if "📋 Новая анкета!" in original_message else "обращение"
