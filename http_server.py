@@ -1,29 +1,46 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import threading
+import asyncio
 import logging
+import sys
+from aiohttp import web
+from datetime import datetime
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 logger = logging.getLogger(__name__)
 
-class SimpleHealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/heartbeat' or self.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(b'OK')
-            logger.info("Получен ping от мониторинга")
-        else:
-            self.send_response(404)
-            self.end_headers()
+class HeartbeatServer:
+    def __init__(self):
+        self.last_request_time = datetime.now()
+        self.app = web.Application()
+        self.setup_routes()
+        
+    def setup_routes(self):
+        self.app.router.add_get('/heartbeat', self.handle_heartbeat)
+        self.app.router.add_head('/heartbeat', self.handle_heartbeat)
+        self.app.router.add_get('/', self.handle_root)
+        
+    async def handle_heartbeat(self, request):
+        self.last_request_time = datetime.now()
+        response_data = {
+            "status": "alive",
+            "timestamp": self.last_request_time.isoformat(),
+            "message": "Bot is running and receiving requests"
+        }
+        return web.json_response(response_data, status=200)
+    
+    async def handle_root(self, request):
+        return web.json_response({
+            "status": "service running",
+            "endpoint": "/heartbeat for health check"
+        }, status=200)
 
-def run_http_server(port=8080):
-    """Запускает простой HTTP-сервер для health checks"""
-    server = HTTPServer(('0.0.0.0', port), SimpleHealthHandler)
-    logger.info(f"HTTP сервер запущен на порту {port}")
-    server.serve_forever()
+    def start_server(self, port=10000):
+        logger.info(f"🚀 Starting heartbeat server on port {port}")
+        web.run_app(self.app, host='0.0.0.0', port=port)
 
-def start_http_server():
-    """Запускает HTTP сервер в отдельном потоке"""
-    http_thread = threading.Thread(target=run_http_server, daemon=True)
-    http_thread.start()
-    return http_thread
+if __name__ == "__main__":
+    server = HeartbeatServer()
+    server.start_server()
