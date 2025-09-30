@@ -24,6 +24,7 @@ def get_supabase() -> Client:
     return supabase
 
 
+# bot/database/core.py
 async def create_user_if_not_exists(user: TgUser) -> None:
     """Добавляет пользователя в базу данных, если его там еще нет."""
     logger.info(f"🔍 Проверка пользователя {user.id} в БД...")
@@ -35,7 +36,7 @@ async def create_user_if_not_exists(user: TgUser) -> None:
     try:
         # Используем точное сравнение для user_id (BIGINT)
         user_exists = supabase_client.table('users').select('user_id').eq('user_id', user.id).execute()
-        if not user_exists.data: # ИСПРАВЛЕНО: было user_exists.
+        if not user_exists.data:
             logger.info(f"🆕 Пользователь {user.id} не найден, создаем...")
             new_user = {
                 "user_id": user.id,
