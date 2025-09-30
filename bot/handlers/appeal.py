@@ -2,7 +2,8 @@
 import re
 import os
 import logging
-from telegram import Update, ReplyKeyboardRemove
+from datetime import datetime, timedelta
+from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from bot.database.core import get_supabase
 
@@ -17,18 +18,82 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     user_id = update.effective_user.id
     supabase = get_supabase()
     
+    # Проверяем, не находится ли пользователь уже в процессе анкеты или обращения
+    anketa_check = supabase.table('temp_applications').select('user_id').eq('user_id', user_id).execute()
+    appeal_check = supabase.table('temp_appeals').select('user_id').eq('user_id', user_id).execute()
+    
+    if anketa_check.data or appeal_check.data:
+        await update.message.reply_text("❌ Вы уже заполняете анкету или обращение. Дождитесь завершения.")
+        return ConversationHandler.END
+    
+    # Проверяем задержку
+    response = supabase.table('users').select('last_anketa_time, last_appeal_time').eq('user_id', user_id).execute()
+    if response.data:
+        user_data = response.data[0]
+        last_anketa = user_data.get('last_anketa_time')
+        last_appeal = user_data.get('last_appeal_time')
+        
+        now = datetime.now()
+        
+        if last_anketa:
+            last_anketa_time = datetime.fromisoformat(last_anketa.replace('Z', '+00:00'))
+            time_diff = now - last_anketa_time
+            # Проверяем, прошло ли 3 часа
+            if time_diff < timedelta(hours=3):
+                # Если прошло меньше 3 часов, проверяем задержки
+                if time_diff < timedelta(minutes=20):
+                    # Повторная отправка - 20 минут
+                    await update.message.reply_text("⏱️ Анкету можно отправить только через 20 минут после предыдущей.")
+                    return ConversationHandler.END
+                elif time_diff < timedelta(minutes=3):
+                    # Первая отправка - 3 минуты
+                    await update.message.reply_text("⏱️ Анкету можно отправить только через 3 минуты после предыдущей.")
+                    return ConversationHandler.END
+        
+        if last_appeal:
+            last_appeal_time = datetime.fromisoformat(last_appeal.replace('Z', '+00:00'))
+            time_diff = now - last_appeal_time
+            # Проверяем, прошло ли 3 часа
+            if time_diff < timedelta(hours=3):
+                # Если прошло меньше 3 часов, проверяем задержки
+                if time_diff < timedelta(minutes=3):
+                    # Первая отправка - 3 минуты
+                    await update.message.reply_text("⏱️ Повторное обращение возможно только через 3 минуты после отправки предыдущего.")
+                    return ConversationHandler.END
+                elif time_diff < timedelta(minutes=20):
+                    # Повторная отправка - 20 минут
+                    await update.message.reply_text("⏱️ Повторное обращение возможно только через 20 минут после отправки предыдущего.")
+                    return ConversationHandler.END
+    
+    # Проверяем бан
+    user_response = supabase.table('users').select('is_banned, banned_features').eq('user_id', user_id).execute()
+    if user_response.data:
+        user_data = user_response.data[0]
+        if user_data.get('is_banned') or 'all' in user_data.get('banned_features', []):
+            await update.message.reply_text("❌ Вы заблокированы и не можете подавать обращения.")
+            return ConversationHandler.END
+        if 'appeal' in user_data.get('banned_features', []):
+            await update.message.reply_text("❌ Вы не можете подавать обращения.")
+            return ConversationHandler.END
+    
     # Удаляем предыдущее незавершённое обращение
     supabase.table('temp_appeals').delete().eq('user_id', user_id).execute()
-    
     # Создаём новую запись
     supabase.table('temp_appeals').insert({
         'user_id': user_id,
         'step': 'user_type'
     }).execute()
     
+    # Клавиатура с отменой
+    keyboard = [
+        ["❌ Отменить"]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    
     await update.message.reply_text(
-        "📨 Давайте оформим обращение!\n\n"
-        "❓ Кто вы? (например: участник, житель города, новичок и т.д.):"
+        "📨 Давайте оформим обращение!\n"
+        "❓ Кто вы? (например: участник, житель города, новичок и т.д.):",
+        reply_markup=reply_markup
     )
     return USER_TYPE
 
@@ -36,6 +101,9 @@ async def receive_user_type(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """Получает тип пользователя."""
     user_id = update.effective_user.id
     text = update.message.text.strip()
+    
+    if text == "❌ Отменить":
+        return await cancel_appeal(update, context)
     
     if not validate_text(text):
         await update.message.reply_text(
@@ -60,6 +128,9 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user_id = update.effective_user.id
     text = update.message.text.strip()
     
+    if text == "❌ Отменить":
+        return await cancel_appeal(update, context)
+    
     if not validate_text(text):
         await update.message.reply_text(
             "❌ Текст содержит запрещённые символы.\n"
@@ -69,12 +140,11 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     supabase = get_supabase()
     response = supabase.table('temp_appeals').select('*').eq('user_id', user_id).execute()
-    if not response.data:  # ← ИСПРАВЛЕНО: было response.
+    if not response.data:
         await update.message.reply_text("❌ Ошибка: данные не найдены.")
         return ConversationHandler.END
     
     data = response.data[0]
-    
     # Получаем информацию о пользователе
     user = update.effective_user
     username = f"@{user.username}" if user.username else "Без username"
@@ -84,21 +154,28 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     # Формируем сообщение для админов
     admin_message = (
-        f"📬 Новое обращение!\n\n"
-        f"👤 Кто: {data['user_type']}\n"
-        f"💬 Сообщение:\n{text}\n\n"
-        f"🆔 ID: {user_id} | {username}\n"
-        f"👤 Имя: {full_name}"
+        f"📬 *Новое обращение!*\n"
+        f"👤 *Кто:* `{data['user_type']}`\n"
+        f"💬 *Сообщение:*\n```\n{text}\n```\n"
+        f"🆔 *ID:* `{user_id}` | {username}\n"
+        f"👤 *Имя:* `{full_name}`"
     )
     
     # Отправляем в админ-чат
     admin_chat_id = os.getenv("ADMIN_CHAT_ID")
     if admin_chat_id:
         try:
-            await context.bot.send_message(chat_id=admin_chat_id, text=admin_message)
+            await context.bot.send_message(chat_id=admin_chat_id, text=admin_message, parse_mode="Markdown")
             await update.message.reply_text(
                 "✅ Обращение отправлено администраторам! Спасибо! 🎉"
             )
+            
+            # Обновляем время последнего обращения
+            from datetime import datetime
+            supabase.table('users').update({
+                'last_appeal_time': datetime.now().isoformat()
+            }).eq('user_id', user_id).execute()
+            
         except Exception as e:
             logger.error(f"Ошибка при отправке в админ-чат: {e}")
             await update.message.reply_text("❌ Ошибка при отправке обращения. Попробуйте позже.")
@@ -108,6 +185,14 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     # Удаляем временную запись
     supabase.table('temp_appeals').delete().eq('user_id', user_id).execute()
+    
+    # Возвращаем основное меню
+    main_keyboard = [
+        ["🤖 О боте", "📝 Анкета", "📨 Обращение"],
+        ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
+    ]
+    reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+    await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
     
     return ConversationHandler.END
 
@@ -121,4 +206,13 @@ async def cancel_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         "❌ Заполнение обращения отменено.",
         reply_markup=ReplyKeyboardRemove()
     )
+    
+    # Возвращаем основное меню
+    main_keyboard = [
+        ["🤖 О боте", "📝 Анкета", "📨 Обращение"],
+        ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
+    ]
+    reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+    await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
+    
     return ConversationHandler.END
