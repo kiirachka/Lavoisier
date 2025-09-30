@@ -31,6 +31,23 @@ async def start_application(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     user_id = update.effective_user.id
     supabase = get_supabase()
     
+    # --- ДОБАВЛЕНО: Проверка частичного бана для анкеты ---
+    user_response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
+    if user_response.data:
+        user_data = user_response.data[0]
+        banned_features = user_data.get('banned_features', [])
+        if 'anketa' in banned_features:
+            await update.message.reply_text("❌ Вы не можете подавать анкеты.")
+            # Возвращаем основное меню без кнопки анкеты
+            main_keyboard = [
+                ["🤖 О боте", "📨 Обращение"],
+                ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
+            ]
+            reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+            await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
+            return ConversationHandler.END
+    # --- КОНЕЦ ДОБАВЛЕНИЯ ---
+    
     # Проверяем, не находится ли пользователь уже в процессе анкеты или обращения
     anketa_check = supabase.table('temp_applications').select('user_id').eq('user_id', user_id).execute()
     appeal_check = supabase.table('temp_appeals').select('user_id').eq('user_id', user_id).execute()
@@ -71,23 +88,12 @@ async def start_application(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 # Если прошло меньше 3 часов, проверяем задержки
                 if time_diff < timedelta(minutes=20):
                     # Повторная отправка - 20 минут
-                    await update.message.reply_text("⏱️ Обращение можно отправить только через 20 минут после предыдущего.")
+                    await update.message.reply_text("⏱️ Анкету можно отправить только через 20 минут после предыдущего обращения.")
                     return ConversationHandler.END
                 elif time_diff < timedelta(minutes=3):
                     # Первая отправка - 3 минуты
-                    await update.message.reply_text("⏱️ Обращение можно отправить только через 3 минуты после предыдущего.")
+                    await update.message.reply_text("⏱️ Анкету можно отправить только через 3 минуты после предыдущего обращения.")
                     return ConversationHandler.END
-    
-    # Проверяем бан
-    user_response = supabase.table('users').select('is_banned, banned_features').eq('user_id', user_id).execute()
-    if user_response.data:
-        user_data = user_response.data[0]
-        if user_data.get('is_banned') or 'all' in user_data.get('banned_features', []):
-            await update.message.reply_text("❌ Вы заблокированы и не можете подавать анкеты.")
-            return ConversationHandler.END
-        if 'anketa' in user_data.get('banned_features', []):
-            await update.message.reply_text("❌ Вы не можете подавать анкеты.")
-            return ConversationHandler.END
     
     # Удаляем предыдущую незавершённую анкету
     supabase.table('temp_applications').delete().eq('user_id', user_id).execute()
