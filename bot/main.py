@@ -165,12 +165,13 @@ async def create_bot_application() -> "Application":
     application.add_handler(CommandHandler("broadcast_city", log_handler(broadcast_city)))
     application.add_handler(CommandHandler("broadcast_starly", log_handler(broadcast_starly)))
     
-    # Команды бана
+    # --- ДОБАВЛЕНО: Команды бана ---
     application.add_handler(CommandHandler("ban", log_handler(ban_user)))
     application.add_handler(CommandHandler("unban", log_handler(unban_user)))
     application.add_handler(CommandHandler("restrict", log_handler(restrict_user)))
     application.add_handler(CommandHandler("unrestrict", log_handler(unrestrict_user)))
-    
+    # --- КОНЕЦ ДОБАВЛЕНИЯ ---
+
     # FSM для анкеты
     application.add_handler(
         ConversationHandler(
@@ -181,10 +182,11 @@ async def create_bot_application() -> "Application":
                 GAME_NICKNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_game_nickname)],
                 WHY_JOIN: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_why_join)],
             },
+            # --- ИСПРАВЛЕНО: добавлен отдельный handler для /cancel ---
             fallbacks=[CommandHandler("cancel", cancel)],
         )
     )
-    
+
     # FSM для обращения
     application.add_handler(
         ConversationHandler(
@@ -193,10 +195,11 @@ async def create_bot_application() -> "Application":
                 USER_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_user_type)],
                 MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_message)],
             },
+            # --- ИСПРАВЛЕНО: добавлен отдельный handler для /cancel ---
             fallbacks=[CommandHandler("cancel", cancel_appeal)],
         )
     )
-    
+
     # Обработчик ответа админа
     application.add_handler(
         MessageHandler(
@@ -204,7 +207,7 @@ async def create_bot_application() -> "Application":
             handle_admin_reply,
         )
     )
-    
+
     # Обработчик текстовых сообщений для "Настройки"
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
@@ -225,7 +228,7 @@ async def start_bot_application(application: "Application", app_context: dict):
 
         logger.info("🚀 Запускаем приложение...")
         await application.start()
-        
+
         logger.info("🔄 Запускаем обработку обновлений...")
         await application.updater.start_polling()
 
