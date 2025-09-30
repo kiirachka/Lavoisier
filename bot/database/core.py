@@ -23,7 +23,6 @@ def get_supabase() -> Client:
         logger.info("Подключение к Supabase установлено")
     return supabase
 
-
 # bot/database/core.py
 async def create_user_if_not_exists(user: TgUser) -> None:
     """Добавляет пользователя в базу данных, если его там еще нет."""
@@ -36,14 +35,14 @@ async def create_user_if_not_exists(user: TgUser) -> None:
     try:
         # Используем точное сравнение для user_id (BIGINT)
         user_exists = supabase_client.table('users').select('user_id').eq('user_id', user.id).execute()
-        if not user_exists.data:
+        if not user_exists.data: # ИСПРАВЛЕНО: было user_exists.
             logger.info(f"🆕 Пользователь {user.id} не найден, создаем...")
             new_user = {
                 "user_id": user.id,
                 "username": user.username,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                # Добавляем новые поля с значениями по умолчанию
+                # --- ДОБАВЛЕНО: новые поля ---
                 "is_banned": False,
                 "banned_features": [],
                 "last_anketa_time": None,
@@ -51,6 +50,7 @@ async def create_user_if_not_exists(user: TgUser) -> None:
                 "can_receive_broadcast": True, # если это поле тоже используется
                 "is_in_squad": False, # если это поле тоже используется
                 "is_in_city": False, # если это поле тоже используется
+                # --- КОНЕЦ ДОБАВЛЕНИЯ ---
             }
             result = supabase_client.table('users').insert(new_user).execute()
             logger.info(f"✅ Пользователь {user.id} добавлен в БД. Результат: {result}")
