@@ -14,7 +14,7 @@ from telegram.ext import (
     ConversationHandler,
     filters,
 )
-from telegram import error as telegram_error
+from telegram import error as telegram_error, ReplyKeyboardMarkup
 from dotenv import load_dotenv
 from bot.handlers.start import start
 from bot.handlers.settings import settings_menu, button_handler, handle_settings_text
@@ -26,6 +26,10 @@ from bot.handlers.admin import (
     add_to_city,
     remove_from_squad,
     remove_from_city,
+    ban_user,
+    unban_user,
+    restrict_user,
+    unrestrict_user,
 )
 from bot.handlers.broadcast import (
     broadcast_all,
@@ -144,7 +148,7 @@ async def create_bot_application() -> "Application":
         logger.error(f"❌ Ошибка при регистрации текущего инстанса: {e}")
 
     # Регистрация обработчиков — ПОРЯДОК ВАЖЕН!
-    
+
     # Команды (с логированием)
     application.add_handler(CommandHandler("start", log_handler(start)))
     application.add_handler(CommandHandler("settings", log_handler(settings_menu)))
@@ -160,9 +164,14 @@ async def create_bot_application() -> "Application":
     application.add_handler(CommandHandler("broadcast_squad", log_handler(broadcast_squad)))
     application.add_handler(CommandHandler("broadcast_city", log_handler(broadcast_city)))
     application.add_handler(CommandHandler("broadcast_starly", log_handler(broadcast_starly)))
-
-
-        # FSM для анкеты
+    
+    # Команды бана
+    application.add_handler(CommandHandler("ban", log_handler(ban_user)))
+    application.add_handler(CommandHandler("unban", log_handler(unban_user)))
+    application.add_handler(CommandHandler("restrict", log_handler(restrict_user)))
+    application.add_handler(CommandHandler("unrestrict", log_handler(unrestrict_user)))
+    
+    # FSM для анкеты
     application.add_handler(
         ConversationHandler(
             entry_points=[MessageHandler(filters.Regex("^📝 Анкета$"), start_application)],
@@ -175,7 +184,7 @@ async def create_bot_application() -> "Application":
             fallbacks=[CommandHandler("cancel", cancel)],
         )
     )
-
+    
     # FSM для обращения
     application.add_handler(
         ConversationHandler(
@@ -187,7 +196,6 @@ async def create_bot_application() -> "Application":
             fallbacks=[CommandHandler("cancel", cancel_appeal)],
         )
     )
-
     
     # Обработчик ответа админа
     application.add_handler(
@@ -196,11 +204,7 @@ async def create_bot_application() -> "Application":
             handle_admin_reply,
         )
     )
-
-
-
-
-
+    
     # Обработчик текстовых сообщений для "Настройки"
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_settings_text))
 
@@ -221,19 +225,16 @@ async def start_bot_application(application: "Application", app_context: dict):
 
         logger.info("🚀 Запускаем приложение...")
         await application.start()
-
-        logger.info("🔄 Запускаем обработчик очереди обновлений...")
         
-        # ВАЖНО: Запускаем обработку очереди обновлений
+        logger.info("🔄 Запускаем обработку обновлений...")
         await application.updater.start_polling()
-        # Или для вебхук режима:
-        await application.update_queue.put({})  # Запускаем обработчик
-        
-        logger.info("✅ Бот успешно запущен и работает через вебхук.")
+
+        logger.info("✅ Бот успешно запущен и работает.")
 
     except Exception as e:
         logger.exception("💥 Ошибка при запуске бота:")
         raise
+
 
 async def stop_bot_application(application: "Application", app_context: dict):
     """Останавливает переданный экземпляр Application бота."""
