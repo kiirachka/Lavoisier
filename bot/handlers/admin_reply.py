@@ -13,7 +13,7 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Проверяем, что это ответ на сообщение
     if not update.message.reply_to_message:
         return
-
+    
     # Проверяем, что это админ
     admin_ids = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit()]
     if update.effective_user.id not in admin_ids:
@@ -24,8 +24,8 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not original_message:
         return
 
-    # Извлекаем ID пользователя из текста (например: "🆔 ID пользователя: 123456789")
-    user_id_match = re.search(r"🆔 ID пользователя: (\d+)", original_message)
+    # Извлекаем ID пользователя из текста (например: "🆔 ID: 123456789")
+    user_id_match = re.search(r"🆔 ID: (\d+)", original_message)
     if not user_id_match:
         await update.message.reply_text("❌ Не удалось найти ID пользователя в оригинальном сообщении.")
         return
@@ -41,8 +41,8 @@ async def handle_admin_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Формируем уведомление для пользователя
     user_message = (
         f"👀 *Вам сообщение!*\n"
-        f"Админ дал ответ на вашу {message_type}:\n\n"
-        f"\"{admin_reply_text}\"\n\n"
+        f"Админ дал ответ на вашу {message_type}:\n"
+        f"\"{admin_reply_text}\"\n"
         f"Спасибо, что с нами! 🙏"
     )
 
