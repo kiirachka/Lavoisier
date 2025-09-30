@@ -18,6 +18,23 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     user_id = update.effective_user.id
     supabase = get_supabase()
     
+    # --- ДОБАВЛЕНО: Проверка частичного бана для обращения ---
+    user_response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
+    if user_response.data:
+        user_data = user_response.data[0]
+        banned_features = user_data.get('banned_features', [])
+        if 'appeal' in banned_features:
+            await update.message.reply_text("❌ Вы не можете подавать обращения.")
+            # Возвращаем основное меню без кнопки обращения
+            main_keyboard = [
+                ["🤖 О боте", "📝 Анкета"],
+                ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
+            ]
+            reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+            await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
+            return ConversationHandler.END
+    # --- КОНЕЦ ДОБАВЛЕНИЯ ---
+    
     # Проверяем, не находится ли пользователь уже в процессе анкеты или обращения
     anketa_check = supabase.table('temp_applications').select('user_id').eq('user_id', user_id).execute()
     appeal_check = supabase.table('temp_appeals').select('user_id').eq('user_id', user_id).execute()
@@ -43,11 +60,11 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                 # Если прошло меньше 3 часов, проверяем задержки
                 if time_diff < timedelta(minutes=20):
                     # Повторная отправка - 20 минут
-                    await update.message.reply_text("⏱️ Анкету можно отправить только через 20 минут после предыдущей.")
+                    await update.message.reply_text("⏱️ Обращение можно отправить только через 20 минут после предыдущей анкеты.")
                     return ConversationHandler.END
                 elif time_diff < timedelta(minutes=3):
                     # Первая отправка - 3 минуты
-                    await update.message.reply_text("⏱️ Анкету можно отправить только через 3 минуты после предыдущей.")
+                    await update.message.reply_text("⏱️ Обращение можно отправить только через 3 минуты после предыдущей анкеты.")
                     return ConversationHandler.END
         
         if last_appeal:
@@ -64,17 +81,6 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                     # Повторная отправка - 20 минут
                     await update.message.reply_text("⏱️ Повторное обращение возможно только через 20 минут после отправки предыдущего.")
                     return ConversationHandler.END
-    
-    # Проверяем бан
-    user_response = supabase.table('users').select('is_banned, banned_features').eq('user_id', user_id).execute()
-    if user_response.data:
-        user_data = user_response.data[0]
-        if user_data.get('is_banned') or 'all' in user_data.get('banned_features', []):
-            await update.message.reply_text("❌ Вы заблокированы и не можете подавать обращения.")
-            return ConversationHandler.END
-        if 'appeal' in user_data.get('banned_features', []):
-            await update.message.reply_text("❌ Вы не можете подавать обращения.")
-            return ConversationHandler.END
     
     # Удаляем предыдущее незавершённое обращение
     supabase.table('temp_appeals').delete().eq('user_id', user_id).execute()
