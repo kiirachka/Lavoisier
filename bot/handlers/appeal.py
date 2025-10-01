@@ -50,10 +50,10 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         last_anketa = user_data.get('last_anketa_time')
         last_appeal = user_data.get('last_appeal_time')
         
-        now = datetime.now()
+       now = datetime.now(timezone.utc)
         
         if last_anketa:
-            last_anketa_time = datetime.fromisoformat(last_anketa.replace('Z', '+00:00'))
+            last_anketa_time = datetime.fromisoformat(last_anketa.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
             time_diff = now - last_anketa_time
             # Проверяем, прошло ли 3 часа
             if time_diff < timedelta(hours=3):
