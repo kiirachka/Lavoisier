@@ -18,6 +18,22 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     user_id = update.effective_user.id
     supabase = get_supabase()
     
+    # --- ДОБАВЛЕНО: Проверка полного бана ---
+    user_response = supabase.table('users').select('is_banned').eq('user_id', user_id).execute()
+    if user_response.data:
+        user_data = user_response.data[0]
+        if user_data.get('is_banned'):
+            await update.message.reply_text("❌ Вы заблокированы и не можете пользоваться ботом.")
+            # Возвращаем основное меню без кнопок анкеты и обращения
+            main_keyboard = [
+                ["🤖 О боте"],
+                ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
+            ]
+            reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+            await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
+            return ConversationHandler.END
+    # --- КОНЕЦ ДОБАВЛЕНИЯ ---
+    
     # --- ДОБАВЛЕНО: Проверка частичного бана для обращения ---
     user_response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
     if user_response.data:
@@ -39,7 +55,7 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     anketa_check = supabase.table('temp_applications').select('user_id').eq('user_id', user_id).execute()
     appeal_check = supabase.table('temp_appeals').select('user_id').eq('user_id', user_id).execute()
     
-    if anketa_check.data or appeal_check.data:
+    if anketa_check.data or appeal_check.
         await update.message.reply_text("❌ Вы уже заполняете анкету или обращение. Дождитесь завершения.")
         return ConversationHandler.END
     
@@ -151,7 +167,7 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     supabase = get_supabase()
     response = supabase.table('temp_appeals').select('*').eq('user_id', user_id).execute()
-    if not response.data:
+    if not response.
         await update.message.reply_text("❌ Ошибка: данные не найдены.")
         return ConversationHandler.END
     
