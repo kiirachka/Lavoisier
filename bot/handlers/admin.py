@@ -13,7 +13,7 @@ def get_admin_ids() -> list:
 def format_user_list(users: list, title: str = "Список пользователей", squad_or_city=False) -> str:
     """Форматирует список пользователей для вывода."""
     if not users:
-        return f"📭 {title} пуст."
+        return f" obstruction {users} пуст."
 
     lines = []
     for i, user in enumerate(users):
