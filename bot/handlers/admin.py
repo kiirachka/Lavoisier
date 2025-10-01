@@ -20,9 +20,11 @@ def format_user_list(users: list) -> str:
         created_at = user.get('created_at')
         if created_at:
             try:
+                # ИСПРАВЛЕНО: обработка времени с временной зоной
                 dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
                 formatted_date = dt.strftime("%d/%m %H:%M")
-            except:
+            except ValueError:
+                # На случай, если формат даты нестандартный
                 formatted_date = "неизвестно"
         else:
             formatted_date = "неизвестно"
@@ -35,8 +37,8 @@ def format_user_list(users: list) -> str:
         line = f"• {name} {username} (ID: {user['user_id']}) — {formatted_date}"
         lines.append(line)
     
-    return "
-".join(lines)
+    # ИСПРАВЛЕНО: использование экранированного символа новой строки
+    return "\n".join(lines)
 
 async def _get_user_id_by_username(username: str) -> int:
     """Получает user_id по username (без @)."""
@@ -57,8 +59,7 @@ async def list_all_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     response = supabase.table('users').select('user_id, username, first_name, last_name, created_at').order('created_at', desc=True).execute()
     users = response.data or []
 
-    text = "📋 *Все пользователи:*
-" + format_user_list(users)
+    text = "📋 *Все пользователи:*\n" + format_user_list(users)
     await update.message.reply_text(text, parse_mode="Markdown")
 
 async def list_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -70,8 +71,7 @@ async def list_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     response = supabase.table('users').select('user_id, username, first_name, last_name, created_at').eq('is_in_squad', True).order('created_at', desc=True).execute()
     users = response.data or []
 
-    text = "🛡️ *Участники сквада:*
-" + format_user_list(users)
+    text = "🛡️ *Участники сквада:*\n" + format_user_list(users)
     await update.message.reply_text(text, parse_mode="Markdown")
 
 async def list_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -83,8 +83,7 @@ async def list_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     response = supabase.table('users').select('user_id, username, first_name, last_name, created_at').eq('is_in_city', True).order('created_at', desc=True).execute()
     users = response.data or []
 
-    text = "🏙️ *Участники города:*
-" + format_user_list(users)
+    text = "🏙️ *Участники города:*\n" + format_user_list(users)
     await update.message.reply_text(text, parse_mode="Markdown")
 
 async def add_to_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -112,7 +111,7 @@ async def add_to_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     supabase = get_supabase()
     existing = supabase.table('users').select('user_id').eq('user_id', user_id).execute()
-    if not existing.data:
+    if not existing.
         await update.message.reply_text("❌ Пользователь не найден в базе.")
         return
 
@@ -147,7 +146,7 @@ async def add_to_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     supabase = get_supabase()
     existing = supabase.table('users').select('user_id').eq('user_id', user_id).execute()
-    if not existing.data:
+    if not existing.
         await update.message.reply_text("❌ Пользователь не найден в базе.")
         return
 
@@ -350,7 +349,7 @@ async def unrestrict_user(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     supabase = get_supabase()
     # Получаем текущие ограничения
     response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
-    if response.data:
+    if response.
         current_bans = response.data[0].get('banned_features', [])
         if restriction in current_bans:
             current_bans.remove(restriction)
