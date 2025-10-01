@@ -22,6 +22,8 @@ from bot.handlers.admin import (
     list_all_users,
     list_squad,
     list_city,
+    list_banned_users, # НОВОЕ
+    note, # НОВОЕ
     add_to_squad,
     add_to_city,
     remove_from_squad,
@@ -36,6 +38,9 @@ from bot.handlers.broadcast import (
     broadcast_squad,
     broadcast_city,
     broadcast_starly,
+    broadcast_to_user, # НОВОЕ
+    broadcast_to_group, # НОВОЕ
+    list_subscribers, # НОВОЕ
 )
 from bot.database.core import get_supabase
 from bot.handlers.anketa import (
@@ -156,6 +161,8 @@ async def create_bot_application() -> "Application":
     application.add_handler(CommandHandler("list_all", log_handler(list_all_users)))
     application.add_handler(CommandHandler("list_squad", log_handler(list_squad)))
     application.add_handler(CommandHandler("list_city", log_handler(list_city)))
+    application.add_handler(CommandHandler("list_banned", log_handler(list_banned_users))) # НОВОЕ
+    application.add_handler(CommandHandler("note", log_handler(note))) # НОВОЕ
     application.add_handler(CommandHandler("add_to_squad", log_handler(add_to_squad)))
     application.add_handler(CommandHandler("add_to_city", log_handler(add_to_city)))
     application.add_handler(CommandHandler("remove_from_squad", log_handler(remove_from_squad)))
@@ -164,6 +171,9 @@ async def create_bot_application() -> "Application":
     application.add_handler(CommandHandler("broadcast_squad", log_handler(broadcast_squad)))
     application.add_handler(CommandHandler("broadcast_city", log_handler(broadcast_city)))
     application.add_handler(CommandHandler("broadcast_starly", log_handler(broadcast_starly)))
+    application.add_handler(CommandHandler("broadcast_to_user", log_handler(broadcast_to_user))) # НОВОЕ
+    application.add_handler(CommandHandler("broadcast_to_group", log_handler(broadcast_to_group))) # НОВОЕ
+    application.add_handler(CommandHandler("list_subscribers", log_handler(list_subscribers))) # НОВОЕ
     
     # --- ДОБАВЛЕНО: Команды бана ---
     application.add_handler(CommandHandler("ban", log_handler(ban_user)))
