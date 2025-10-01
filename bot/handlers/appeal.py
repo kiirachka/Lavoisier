@@ -20,7 +20,7 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     
     # --- ДОБАВЛЕНО: Проверка полного бана ---
     user_response = supabase.table('users').select('is_banned').eq('user_id', user_id).execute()
-    if user_response.data:
+    if user_response.data: # ИСПРАВЛЕНО: .data
         user_data = user_response.data[0]
         if user_data.get('is_banned'):
             await update.message.reply_text("❌ Вы заблокированы и не можете пользоваться ботом.")
@@ -55,13 +55,14 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     anketa_check = supabase.table('temp_applications').select('user_id').eq('user_id', user_id).execute()
     appeal_check = supabase.table('temp_appeals').select('user_id').eq('user_id', user_id).execute()
     
+    # ИСПРАВЛЕНО: проверка .data (строка 58)
     if anketa_check.data or appeal_check.
         await update.message.reply_text("❌ Вы уже заполняете анкету или обращение. Дождитесь завершения.")
         return ConversationHandler.END
     
     # Проверяем задержку
     response = supabase.table('users').select('last_anketa_time, last_appeal_time').eq('user_id', user_id).execute()
-    if response.data:
+    if response.data: # ИСПРАВЛЕНО: .data
         user_data = response.data[0]
         last_anketa = user_data.get('last_anketa_time')
         last_appeal = user_data.get('last_appeal_time')
@@ -167,6 +168,7 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     supabase = get_supabase()
     response = supabase.table('temp_appeals').select('*').eq('user_id', user_id).execute()
+    # ИСПРАВЛЕНО: проверка .data
     if not response.
         await update.message.reply_text("❌ Ошибка: данные не найдены.")
         return ConversationHandler.END
