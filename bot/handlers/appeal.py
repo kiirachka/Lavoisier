@@ -43,7 +43,7 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             await update.message.reply_text("❌ Вы не можете подавать обращения.")
             # Возвращаем основное меню без кнопки обращения
             main_keyboard = [
-                ["🤖 О боте", "📝 Анкета"],
+                ["🤖 О боте", "📝 Анкeta"],
                 ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
             ]
             reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
@@ -55,8 +55,8 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     anketa_check = supabase.table('temp_applications').select('user_id').eq('user_id', user_id).execute()
     appeal_check = supabase.table('temp_appeals').select('user_id').eq('user_id', user_id).execute()
     
-    # ИСПРАВЛЕНО: проверка .data (строка 58)
-    if anketa_check.data or appeal_check.
+    # ИСПРАВЛЕНО: проверка .data (строка 59)
+    if anketa_check.data or appeal_check.data:
         await update.message.reply_text("❌ Вы уже заполняете анкету или обращение. Дождитесь завершения.")
         return ConversationHandler.END
     
@@ -168,8 +168,8 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     supabase = get_supabase()
     response = supabase.table('temp_appeals').select('*').eq('user_id', user_id).execute()
-    # ИСПРАВЛЕНО: проверка .data
-    if not response.
+    # ИСПРАВЛЕНО: проверка .data (строка 134)
+    if not response.data:
         await update.message.reply_text("❌ Ошибка: данные не найдены.")
         return ConversationHandler.END
     
