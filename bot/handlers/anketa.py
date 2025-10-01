@@ -63,37 +63,39 @@ async def start_application(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         last_anketa = user_data.get('last_anketa_time')
         last_appeal = user_data.get('last_appeal_time')
         
-        now = datetime.now(timezone.utc)
-        
-        if last_anketa:
-            last_anketa_time = datetime.fromisoformat(last_anketa.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
-            time_diff = now - last_anketa_time
-            # Проверяем, прошло ли 3 часа
-            if time_diff < timedelta(hours=3):
-                # Если прошло меньше 3 часов, проверяем задержки
-                if time_diff < timedelta(minutes=3):
-                    # Первая отправка - 3 минуты
-                    await update.message.reply_text("⏱️ Повторная анкета возможна только через 3 минуты после отправки предыдущей.")
-                    return ConversationHandler.END
-                elif time_diff < timedelta(minutes=20):
-                    # Повторная отправка - 20 минут
-                    await update.message.reply_text("⏱️ Повторная анкета возможна только через 20 минут после отправки предыдущей.")
-                    return ConversationHandler.END
-        
-        if last_appeal:
-            last_appeal_time = datetime.fromisoformat(last_appeal.replace('Z', '+00:00'))
-            time_diff = now - last_appeal_time
-            # Проверяем, прошло ли 3 часа
-            if time_diff < timedelta(hours=3):
-                # Если прошло меньше 3 часов, проверяем задержки
-                if time_diff < timedelta(minutes=20):
-                    # Повторная отправка - 20 минут
-                    await update.message.reply_text("⏱️ Анкету можно отправить только через 20 минут после предыдущего обращения.")
-                    return ConversationHandler.END
-                elif time_diff < timedelta(minutes=3):
-                    # Первая отправка - 3 минуты
-                    await update.message.reply_text("⏱️ Анкету можно отправить только через 3 минуты после предыдущего обращения.")
-                    return ConversationHandler.END
+    now = datetime.now(timezone.utc) # Используем timezone-aware now
+
+    if last_anketa:
+        # last_anketa приходит в формате ISO 8601
+        last_anketa_time = datetime.fromisoformat(last_anketa.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
+        time_diff = now - last_anketa_time # Теперь оба aware
+        # Проверяем, прошло ли 3 часа
+        if time_diff < timedelta(hours=3):
+            # Если прошло меньше 3 часов, проверяем задержки
+            if time_diff < timedelta(minutes=3):
+                # Первая отправка - 3 минуты
+                await update.message.reply_text("⏱️ Повторная анкета возможна только через 3 минуты после отправки предыдущей.")
+                return ConversationHandler.END
+            elif time_diff < timedelta(minutes=20):
+                # Повторная отправка - 20 минут
+                await update.message.reply_text("⏱️ Повторная анкета возможна только через 20 минут после отправки предыдущей.")
+                return ConversationHandler.END
+
+    if last_appeal:
+        # last_appeal приходит в формате ISO 8601
+        last_appeal_time = datetime.fromisoformat(last_appeal.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
+        time_diff = now - last_appeal_time # Теперь оба aware
+        # Проверяем, прошло ли 3 часа
+        if time_diff < timedelta(hours=3):
+            # Если прошло меньше 3 часов, проверяем задержки
+            if time_diff < timedelta(minutes=20):
+                # Повторная отправка - 20 минут
+                await update.message.reply_text("⏱️ Анкету можно отправить только через 20 минут после предыдущего обращения.")
+                return ConversationHandler.END
+            elif time_diff < timedelta(minutes=3):
+                # Первая отправка - 3 минуты
+                await update.message.reply_text("⏱️ Анкету можно отправить только через 3 минуты после предыдущего обращения.")
+                return ConversationHandler.END
     
     # Удаляем предыдущую незавершённую анкету
     supabase.table('temp_applications').delete().eq('user_id', user_id).execute()
