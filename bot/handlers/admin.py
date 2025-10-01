@@ -46,7 +46,8 @@ async def _get_user_id_by_username(username: str) -> int:
         username = username[1:]
     supabase = get_supabase()
     response = supabase.table('users').select('user_id').eq('username', username).execute()
-    if response.
+    # ИСПРАВЛЕНО: проверка .data
+    if response.data:
         return response.data[0]['user_id']
     return None
 
@@ -111,7 +112,8 @@ async def add_to_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     supabase = get_supabase()
     existing = supabase.table('users').select('user_id').eq('user_id', user_id).execute()
-    if not existing.
+    # ИСПРАВЛЕНО: проверка .data
+    if not existing.data:
         await update.message.reply_text("❌ Пользователь не найден в базе.")
         return
 
@@ -146,7 +148,8 @@ async def add_to_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     supabase = get_supabase()
     existing = supabase.table('users').select('user_id').eq('user_id', user_id).execute()
-    if not existing.
+    # ИСПРАВЛЕНО: проверка .data
+    if not existing.data:
         await update.message.reply_text("❌ Пользователь не найден в базе.")
         return
 
@@ -305,7 +308,8 @@ async def restrict_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     supabase = get_supabase()
     # Получаем текущие ограничения
     response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
-    if response.
+    # ИСПРАВЛЕНО: проверка .data
+    if response.data:
         current_bans = response.data[0].get('banned_features', [])
         if restriction not in current_bans:
             current_bans.append(restriction)
@@ -349,7 +353,8 @@ async def unrestrict_user(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     supabase = get_supabase()
     # Получаем текущие ограничения
     response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
-    if response.
+    # ИСПРАВЛЕНО: проверка .data
+    if response.data:
         current_bans = response.data[0].get('banned_features', [])
         if restriction in current_bans:
             current_bans.remove(restriction)
