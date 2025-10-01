@@ -30,7 +30,7 @@ async def _send_message_to_users(context, users, original_msg=None, fallback_tex
                         caption=caption,
                         parse_mode=parse_mode
                     )
-                # Обработка текста
+                # Обработка текста (с форматированием)
                 elif original_msg.text:
                     parse_mode = original_msg.parse_mode if hasattr(original_msg, 'parse_mode') else None
                     await context.bot.send_message(
@@ -83,8 +83,23 @@ async def _send_message_to_users(context, users, original_msg=None, fallback_tex
                         caption=original_msg.caption or "",
                         parse_mode=original_msg.parse_mode
                     )
+                # Обработка местоположения
+                elif original_msg.location:
+                    await context.bot.send_location(
+                        chat_id=user['user_id'],
+                        latitude=original_msg.location.latitude,
+                        longitude=original_msg.location.longitude
+                    )
+                # Обработка контакта
+                elif original_msg.contact:
+                    await context.bot.send_contact(
+                        chat_id=user['user_id'],
+                        phone_number=original_msg.contact.phone_number,
+                        first_name=original_msg.contact.first_name,
+                        last_name=original_msg.contact.last_name or ""
+                    )
                 else:
-                    logger.warning(f"Не поддерживаемый тип сообщения для пользователя {user['user_id']}")
+                    logger.warning(f"Не поддерживаемый тип сообщения для пользователя {user['user_id']}: {type(original_msg)}")
                     continue
             else:
                 await context.bot.send_message(chat_id=user['user_id'], text=fallback_text)
@@ -102,10 +117,10 @@ async def broadcast_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     supabase = get_supabase()
     response = supabase.table('users').select('user_id, can_receive_broadcast').eq('can_receive_broadcast', True).execute()
-    users = response.data or []
+    users = [u for u in response.data or [] if u.get('can_receive_broadcast', True)] # Фильтруем по can_receive_broadcast
 
     if not users:
-        await update.message.reply_text("📭 Нет пользователей для рассылки.")
+        await update.message.reply_text(" obstruction {users} пуст.")
         return
 
     if update.message.reply_to_message:
@@ -134,10 +149,10 @@ async def broadcast_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     supabase = get_supabase()
     response = supabase.table('users').select('user_id, can_receive_broadcast').eq('is_in_squad', True).eq('can_receive_broadcast', True).execute()
-    users = response.data or []
+    users = [u for u in response.data or [] if u.get('can_receive_broadcast', True)]
 
     if not users:
-        await update.message.reply_text("📭 Нет пользователей в скваде, которые получают рассылки.")
+        await update.message.reply_text(" obstruction {users} пуст.")
         return
 
     if update.message.reply_to_message:
@@ -162,10 +177,10 @@ async def broadcast_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     supabase = get_supabase()
     response = supabase.table('users').select('user_id, can_receive_broadcast').eq('is_in_city', True).eq('can_receive_broadcast', True).execute()
-    users = response.data or []
+    users = [u for u in response.data or [] if u.get('can_receive_broadcast', True)]
 
     if not users:
-        await update.message.reply_text("📭 Нет пользователей в городе, которые получают рассылки.")
+        await update.message.reply_text(" obstruction {users} пуст.")
         return
 
     if update.message.reply_to_message:
@@ -190,10 +205,10 @@ async def broadcast_starly(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     supabase = get_supabase()
     response = supabase.table('users').select('user_id, can_receive_broadcast').or_('is_in_squad.eq.true,is_in_city.eq.true').eq('can_receive_broadcast', True).execute()
-    users = response.data or []
+    users = [u for u in response.data or [] if u.get('can_receive_broadcast', True)]
 
     if not users:
-        await update.message.reply_text("📭 Нет пользователей в скваде или городе, которые получают рассылки.")
+        await update.message.reply_text(" obstruction {users} пуст.")
         return
 
     if update.message.reply_to_message:
@@ -238,7 +253,7 @@ async def broadcast_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     # Проверяем, существует ли пользователь и получает его статус рассылки
     supabase = get_supabase()
-    user_response = supabase.table('users').select('can_receive_broadcast').eq('user_id', user_id).execute()
+    user_response = supabase.table('users').select('can_receive_broadcast, is_banned, banned_features').eq('user_id', user_id).execute()
     if not user_response.data:
         await update.message.reply_text("❌ Пользователь не найден в базе.")
         return
@@ -301,6 +316,10 @@ async def broadcast_to_group(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 await context.bot.send_voice(chat_id=chat_id, voice=original_msg.voice.file_id, caption=original_msg.caption or "")
             elif original_msg.video:
                 await context.bot.send_video(chat_id=chat_id, video=original_msg.video.file_id, caption=original_msg.caption or "", parse_mode=original_msg.parse_mode)
+            elif original_msg.audio:
+                await context.bot.send_audio(chat_id=chat_id, audio=original_msg.audio.file_id, caption=original_msg.caption or "", parse_mode=original_msg.parse_mode)
+            elif original_msg.animation:
+                await context.bot.send_animation(chat_id=chat_id, animation=original_msg.animation.file_id, caption=original_msg.caption or "", parse_mode=original_msg.parse_mode)
             else:
                 await update.message.reply_text("❌ Тип сообщения не поддерживается для отправки в чат.")
                 return
@@ -332,7 +351,7 @@ async def list_subscribers(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     all_users = all_response.data or []
 
     if not all_users:
-        await update.message.reply_text("📭 Нет пользователей в базе.")
+        await update.message.reply_text(" obstruction {users} пуст.")
         return
 
     receiving = []
