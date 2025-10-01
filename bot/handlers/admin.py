@@ -13,87 +13,85 @@ def get_admin_ids() -> list:
 def format_user_list(users: list) -> str:
     """Форматирует список пользователей для вывода."""
     if not users:
-        return "📭 Список пуст."
+        return "----- Spisok pust. -----"
 
     lines = []
     for user in users:
         created_at = user.get('created_at')
         if created_at:
             try:
-                # ИСПРАВЛЕНО: обработка времени с временной зоной
                 dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
                 formatted_date = dt.strftime("%d/%m %H:%M")
             except ValueError:
-                # На случай, если формат даты нестандартный
-                formatted_date = "неизвестно"
+                formatted_date = "neizvestno"
         else:
-            formatted_date = "неизвестно"
-        
+            formatted_date = "neizvestno"
+
         name = f"{user.get('first_name') or ''} {user.get('last_name') or ''}".strip()
         if not name:
-            name = "Без имени"
-        
-        username = f"@{user['username']}" if user.get('username') else "—"
-        line = f"• {name} {username} (ID: {user['user_id']}) — {formatted_date}"
+            name = "Bez imeni"
+
+        username = f"@{user['username']}" if user.get('username') else "----"
+        # Ispol'zuem proverku .data
+        line = f"- {name} {username} (ID: {user['user_id']}) - {formatted_date}"
         lines.append(line)
-    
-    # ИСПРАВЛЕНО: использование экранированного символа новой строки
+
+    # Ispol'zuem prostoj simvol novoj stroki
     return "\n".join(lines)
 
 async def _get_user_id_by_username(username: str) -> int:
-    """Получает user_id по username (без @)."""
+    """Poluchaet user_id po username (bez @)."""
     if username.startswith('@'):
         username = username[1:]
     supabase = get_supabase()
     response = supabase.table('users').select('user_id').eq('username', username).execute()
-    # ИСПРАВЛЕНО: проверка .data
     if response.data:
         return response.data[0]['user_id']
     return None
 
 async def list_all_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Показывает всех пользователей."""
+    """Pokazyvaet vseh pol'zovatelej."""
     if update.effective_user.id not in get_admin_ids():
-        return  # НЕ ОТВЕЧАЕМ — скрываем команду
+        return
 
     supabase = get_supabase()
     response = supabase.table('users').select('user_id, username, first_name, last_name, created_at').order('created_at', desc=True).execute()
     users = response.data or []
 
-    text = "📋 *Все пользователи:*\n" + format_user_list(users)
-    await update.message.reply_text(text, parse_mode="Markdown")
+    text = "Vse pol'zovateli:\n" + format_user_list(users)
+    await update.message.reply_text(text)
 
 async def list_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Показывает участников сквада."""
+    """Pokazyvaet uchastnikov skvada."""
     if update.effective_user.id not in get_admin_ids():
-        return  # НЕ ОТВЕЧАЕМ — скрываем команду
+        return
 
     supabase = get_supabase()
     response = supabase.table('users').select('user_id, username, first_name, last_name, created_at').eq('is_in_squad', True).order('created_at', desc=True).execute()
     users = response.data or []
 
-    text = "🛡️ *Участники сквада:*\n" + format_user_list(users)
-    await update.message.reply_text(text, parse_mode="Markdown")
+    text = "Uchastniki skvada:\n" + format_user_list(users)
+    await update.message.reply_text(text)
 
 async def list_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Показывает участников города."""
+    """Pokazyvaet uchastnikov goroda."""
     if update.effective_user.id not in get_admin_ids():
-        return  # НЕ ОТВЕЧАЕМ — скрываем команду
+        return
 
     supabase = get_supabase()
     response = supabase.table('users').select('user_id, username, first_name, last_name, created_at').eq('is_in_city', True).order('created_at', desc=True).execute()
     users = response.data or []
 
-    text = "🏙️ *Участники города:*\n" + format_user_list(users)
-    await update.message.reply_text(text, parse_mode="Markdown")
+    text = "Uchastniki goroda:\n" + format_user_list(users)
+    await update.message.reply_text(text)
 
 async def add_to_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Добавляет пользователя в сквад по @username или user_id."""
+    """Dobavlyaet pol'zovatelya v skvad po @username ili user_id."""
     if update.effective_user.id not in get_admin_ids():
-        return  # НЕ ОТВЕЧАЕМ — скрываем команду
+        return
 
     if not context.args:
-        await update.message.reply_text("📌 Использование: /add_to_squad <@username или user_id>")
+        await update.message.reply_text("Ispol'zovanie: /add_to_squad <@username ili user_id>")
         return
 
     identifier = context.args[0]
@@ -101,35 +99,34 @@ async def add_to_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if identifier.startswith('@'):
         user_id = await _get_user_id_by_username(identifier)
         if not user_id:
-            await update.message.reply_text(f"❌ Пользователь {identifier} не найден в базе.")
+            await update.message.reply_text(f"Pol'zovatel' {identifier} ne nayden v baze.")
             return
     else:
         try:
             user_id = int(identifier)
         except ValueError:
-            await update.message.reply_text("❌ user_id должен быть числом, а username — начинаться с @.")
+            await update.message.reply_text("user_id dolzhen byt' chislom, a username nachinat'sya s @.")
             return
 
     supabase = get_supabase()
     existing = supabase.table('users').select('user_id').eq('user_id', user_id).execute()
-    # ИСПРАВЛЕНО: проверка .data
     if not existing.data:
-        await update.message.reply_text("❌ Пользователь не найден в базе.")
+        await update.message.reply_text("Pol'zovatel' ne nayden v baze.")
         return
 
     supabase.table('users').update({
         'is_in_squad': True,
         'is_in_city': False
     }).eq('user_id', user_id).execute()
-    await update.message.reply_text(f"✅ Пользователь {identifier} добавлен в сквад и удалён из города.")
+    await update.message.reply_text(f"Pol'zovatel' {identifier} dobavlen v skvad i udalen iz goroda.")
 
 async def add_to_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Добавляет пользователя в город по @username или user_id."""
+    """Dobavlyaet pol'zovatelya v gorod po @username ili user_id."""
     if update.effective_user.id not in get_admin_ids():
-        return  # НЕ ОТВЕЧАЕМ — скрываем команду
+        return
 
     if not context.args:
-        await update.message.reply_text("📌 Использование: /add_to_city <@username или user_id>")
+        await update.message.reply_text("Ispol'zovanie: /add_to_city <@username ili user_id>")
         return
 
     identifier = context.args[0]
@@ -137,35 +134,34 @@ async def add_to_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if identifier.startswith('@'):
         user_id = await _get_user_id_by_username(identifier)
         if not user_id:
-            await update.message.reply_text(f"❌ Пользователь {identifier} не найден в базе.")
+            await update.message.reply_text(f"Pol'zovatel' {identifier} ne nayden v baze.")
             return
     else:
         try:
             user_id = int(identifier)
         except ValueError:
-            await update.message.reply_text("❌ user_id должен быть числом, а username — начинаться с @.")
+            await update.message.reply_text("user_id dolzhen byt' chislom, a username nachinat'sya s @.")
             return
 
     supabase = get_supabase()
     existing = supabase.table('users').select('user_id').eq('user_id', user_id).execute()
-    # ИСПРАВЛЕНО: проверка .data
     if not existing.data:
-        await update.message.reply_text("❌ Пользователь не найден в базе.")
+        await update.message.reply_text("Pol'zovatel' ne nayden v baze.")
         return
 
     supabase.table('users').update({
         'is_in_city': True,
         'is_in_squad': False
     }).eq('user_id', user_id).execute()
-    await update.message.reply_text(f"✅ Пользователь {identifier} добавлен в город и удалён из сквада.")
+    await update.message.reply_text(f"Pol'zovatel' {identifier} dobavlen v gorod i udalen iz skvada.")
 
 async def remove_from_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Удаляет пользователя из сквада по @username или user_id."""
+    """Udalyaet pol'zovatelya iz skvada po @username ili user_id."""
     if update.effective_user.id not in get_admin_ids():
-        return  # НЕ ОТВЕЧАЕМ — скрываем команду
+        return
 
     if not context.args:
-        await update.message.reply_text("📌 Использование: /remove_from_squad <@username или user_id>")
+        await update.message.reply_text("Ispol'zovanie: /remove_from_squad <@username ili user_id>")
         return
 
     identifier = context.args[0]
@@ -173,26 +169,26 @@ async def remove_from_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if identifier.startswith('@'):
         user_id = await _get_user_id_by_username(identifier)
         if not user_id:
-            await update.message.reply_text(f"❌ Пользователь {identifier} не найден в базе.")
+            await update.message.reply_text(f"Pol'zovatel' {identifier} ne nayden v baze.")
             return
     else:
         try:
             user_id = int(identifier)
         except ValueError:
-            await update.message.reply_text("❌ user_id должен быть числом, а username — начинаться с @.")
+            await update.message.reply_text("user_id dolzhen byt' chislom, a username nachinat'sya s @.")
             return
 
     supabase = get_supabase()
     supabase.table('users').update({'is_in_squad': False}).eq('user_id', user_id).execute()
-    await update.message.reply_text(f"✅ Пользователь {identifier} удалён из сквада.")
+    await update.message.reply_text(f"Pol'zovatel' {identifier} udalen iz skvada.")
 
 async def remove_from_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Удаляет пользователя из города по @username или user_id."""
+    """Udalyaet pol'zovatelya iz goroda po @username ili user_id."""
     if update.effective_user.id not in get_admin_ids():
-        return  # НЕ ОТВЕЧАЕМ — скрываем команду
+        return
 
     if not context.args:
-        await update.message.reply_text("📌 Использование: /remove_from_city <@username или user_id>")
+        await update.message.reply_text("Ispol'zovanie: /remove_from_city <@username ili user_id>")
         return
 
     identifier = context.args[0]
@@ -200,27 +196,27 @@ async def remove_from_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if identifier.startswith('@'):
         user_id = await _get_user_id_by_username(identifier)
         if not user_id:
-            await update.message.reply_text(f"❌ Пользователь {identifier} не найден в базе.")
+            await update.message.reply_text(f"Pol'zovatel' {identifier} ne nayden v baze.")
             return
     else:
         try:
             user_id = int(identifier)
         except ValueError:
-            await update.message.reply_text("❌ user_id должен быть числом, а username — начинаться с @.")
+            await update.message.reply_text("user_id dolzhen byt' chislom, a username nachinat'sya s @.")
             return
 
     supabase = get_supabase()
     supabase.table('users').update({'is_in_city': False}).eq('user_id', user_id).execute()
-    await update.message.reply_text(f"✅ Пользователь {identifier} удалён из города.")
+    await update.message.reply_text(f"Pol'zovatel' {identifier} udalen iz goroda.")
 
-# === ФУНКЦИИ БАНА ===
+# === FUNKTSII BANA (vremennaya versiya s proverkoy .data) ===
 async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Блокирует пользователя полностью."""
+    """Blokiroet pol'zovatelya polnost'yu."""
     if update.effective_user.id not in get_admin_ids():
         return
 
     if not context.args:
-        await update.message.reply_text("📌 Использование: /ban <@username или user_id>")
+        await update.message.reply_text("Ispol'zovanie: /ban <@username ili user_id>")
         return
 
     identifier = context.args[0]
@@ -228,13 +224,13 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if identifier.startswith('@'):
         user_id = await _get_user_id_by_username(identifier)
         if not user_id:
-            await update.message.reply_text(f"❌ Пользователь {identifier} не найден в базе.")
+            await update.message.reply_text(f"Pol'zovatel' {identifier} ne nayden v baze.")
             return
     else:
         try:
             user_id = int(identifier)
         except ValueError:
-            await update.message.reply_text("❌ user_id должен быть числом, а username — начинаться с @.")
+            await update.message.reply_text("user_id dolzhen byt' chislom, a username nachinat'sya s @.")
             return
 
     supabase = get_supabase()
@@ -242,16 +238,16 @@ async def ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         'is_banned': True,
         'banned_features': ['all']
     }).eq('user_id', user_id).execute()
-    
-    await update.message.reply_text(f"✅ Пользователь {identifier} заблокирован полностью.")
+
+    await update.message.reply_text(f"Pol'zovatel' {identifier} zablokirovan polnost'yu.")
 
 async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Разблокирует пользователя."""
+    """Razblokiroet pol'zovatelya."""
     if update.effective_user.id not in get_admin_ids():
         return
 
     if not context.args:
-        await update.message.reply_text("📌 Использование: /unban <@username или user_id>")
+        await update.message.reply_text("Ispol'zovanie: /unban <@username ili user_id>")
         return
 
     identifier = context.args[0]
@@ -259,13 +255,13 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if identifier.startswith('@'):
         user_id = await _get_user_id_by_username(identifier)
         if not user_id:
-            await update.message.reply_text(f"❌ Пользователь {identifier} не найден в базе.")
+            await update.message.reply_text(f"Pol'zovatel' {identifier} ne nayden v baze.")
             return
     else:
         try:
             user_id = int(identifier)
         except ValueError:
-            await update.message.reply_text("❌ user_id должен быть числом, а username — начинаться с @.")
+            await update.message.reply_text("user_id dolzhen byt' chislom, a username nachinat'sya s @.")
             return
 
     supabase = get_supabase()
@@ -273,95 +269,93 @@ async def unban_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         'is_banned': False,
         'banned_features': []
     }).eq('user_id', user_id).execute()
-    
-    await update.message.reply_text(f"✅ Пользователь {identifier} разблокирован.")
+
+    await update.message.reply_text(f"Pol'zovatel' {identifier} razblokirovan.")
 
 async def restrict_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Ограничивает пользователя (например, анкеты или обращения)."""
+    """Ogranichivaet pol'zovatelya (naprimer, ankety ili obrashcheniya)."""
     if update.effective_user.id not in get_admin_ids():
         return
 
     if len(context.args) < 2:
-        await update.message.reply_text("📌 Использование: /restrict <@username или user_id> <anketa|appeal>")
+        await update.message.reply_text("Ispol'zovanie: /restrict <@username ili user_id> <anketa|appeal>")
         return
 
     identifier = context.args[0]
     restriction = context.args[1].lower()
-    
+
     if restriction not in ['anketa', 'appeal']:
-        await update.message.reply_text("❌ Допустимые ограничения: anketa, appeal")
+        await update.message.reply_text("Dopustimye ogranicheniya: anketa, appeal")
         return
 
     user_id = None
     if identifier.startswith('@'):
         user_id = await _get_user_id_by_username(identifier)
         if not user_id:
-            await update.message.reply_text(f"❌ Пользователь {identifier} не найден в базе.")
+            await update.message.reply_text(f"Pol'zovatel' {identifier} ne nayden v baze.")
             return
     else:
         try:
             user_id = int(identifier)
         except ValueError:
-            await update.message.reply_text("❌ user_id должен быть числом, а username — начинаться с @.")
+            await update.message.reply_text("user_id dolzhen byt' chislom, a username nachinat'sya s @.")
             return
 
     supabase = get_supabase()
-    # Получаем текущие ограничения
+    # Poluchaem tekushchie ogranicheniya
     response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
-    # ИСПРАВЛЕНО: проверка .data
-    if response.data:
+    if response.data: # Ispol'zuem .data
         current_bans = response.data[0].get('banned_features', [])
         if restriction not in current_bans:
             current_bans.append(restriction)
-        
+
         supabase.table('users').update({
             'banned_features': current_bans
         }).eq('user_id', user_id).execute()
-        await update.message.reply_text(f"✅ Пользователь {identifier} ограничен: {restriction}")
+        await update.message.reply_text(f"Pol'zovatel' {identifier} ogranichen: {restriction}")
     else:
-        await update.message.reply_text("❌ Пользователь не найден в базе.")
+        await update.message.reply_text("Pol'zovatel' ne nayden v baze.")
 
 async def unrestrict_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Снимает ограничения с пользователя."""
+    """Snyimaet ogranicheniya s pol'zovatelya."""
     if update.effective_user.id not in get_admin_ids():
         return
 
     if len(context.args) < 2:
-        await update.message.reply_text("📌 Использование: /unrestrict <@username или user_id> <anketa|appeal>")
+        await update.message.reply_text("Ispol'zovanie: /unrestrict <@username ili user_id> <anketa|appeal>")
         return
 
     identifier = context.args[0]
     restriction = context.args[1].lower()
-    
+
     if restriction not in ['anketa', 'appeal']:
-        await update.message.reply_text("❌ Допустимые ограничения: anketa, appeal")
+        await update.message.reply_text("Dopustimye ogranicheniya: anketa, appeal")
         return
 
     user_id = None
     if identifier.startswith('@'):
         user_id = await _get_user_id_by_username(identifier)
         if not user_id:
-            await update.message.reply_text(f"❌ Пользователь {identifier} не найден в базе.")
+            await update.message.reply_text(f"Pol'zovatel' {identifier} ne nayden v baze.")
             return
     else:
         try:
             user_id = int(identifier)
         except ValueError:
-            await update.message.reply_text("❌ user_id должен быть числом, а username — начинаться с @.")
+            await update.message.reply_text("user_id dolzhen byt' chislom, a username nachinat'sya s @.")
             return
 
     supabase = get_supabase()
-    # Получаем текущие ограничения
+    # Poluchaem tekushchie ogranicheniya
     response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
-    # ИСПРАВЛЕНО: проверка .data
-    if response.data:
+    if response.data: # Ispol'zuem .data
         current_bans = response.data[0].get('banned_features', [])
         if restriction in current_bans:
             current_bans.remove(restriction)
-        
+
         supabase.table('users').update({
             'banned_features': current_bans
         }).eq('user_id', user_id).execute()
-        await update.message.reply_text(f"✅ С пользователя {identifier} снято ограничение: {restriction}")
+        await update.message.reply_text(f"S pol'zovatelya {identifier} snyato ogranichenie: {restriction}")
     else:
-        await update.message.reply_text("❌ Пользователь не найден в базе.")
+        await update.message.reply_text("Pol'zovatel' ne nayden v baze.")
