@@ -55,7 +55,7 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         if last_anketa:
             last_anketa_time = datetime.fromisoformat(last_anketa.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
             time_diff = now - last_anketa_time
-            # Проверяем, прошло ли 3 часа
+            # Проверяем, прошло ли 3 час
             if time_diff < timedelta(hours=3):
                 # Если прошло меньше 3 часов, проверяем задержки
                 if time_diff < timedelta(minutes=20):
