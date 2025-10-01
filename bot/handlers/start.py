@@ -1,6 +1,6 @@
 # bot/handlers/start.py
 import logging
-from telegram import Update, ReplyKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 # ИМПОРТИРУЕМ get_supabase из bot.database.core
 from bot.database.core import create_user_if_not_exists, get_supabase
@@ -23,17 +23,35 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         # ИСПОЛЬЗУЕМ get_supabase, которая теперь импортирована
         supabase = get_supabase()
         # ПРАВИЛЬНО: используем response.data
-        response = supabase.table('users').select('is_banned, banned_features').eq('user_id', user_id).execute()
+        response = supabase.table('users').select('is_banned, banned_features, can_receive_broadcast').eq('user_id', user_id).execute()
         
-        if response.data:  # <- ПРАВИЛЬНО: проверяем response.data, а не response.
+        if response.data:
             user_data = response.data[0]
-            if user_data.get('is_banned'):
+            is_banned = user_data.get('is_banned')
+            banned_features = user_data.get('banned_features', [])
+            can_receive_broadcast = user_data.get('can_receive_broadcast', True)
+
+            # Проверка полного бана
+            if is_banned:
                 await update.message.reply_text("❌ Вы заблокированы и не можете пользоваться ботом.")
+                # Отправляем меню без большинства кнопок
+                limited_keyboard = [
+                    ["🤖 О боте"],
+                    ["⚙️ Настройки"]
+                ]
+                limited_reply_markup = ReplyKeyboardMarkup(limited_keyboard, resize_keyboard=True)
+                await update.message.reply_text("Выберите действие:", reply_markup=limited_reply_markup)
                 return
             
-            banned_features = user_data.get('banned_features', [])
+            # Проверка частичных банов
             if 'all' in banned_features:
                 await update.message.reply_text("❌ Вы заблокированы и не можете пользоваться ботом.")
+                limited_keyboard = [
+                    ["🤖 О боте"],
+                    ["⚙️ Настройки"]
+                ]
+                limited_reply_markup = ReplyKeyboardMarkup(limited_keyboard, resize_keyboard=True)
+                await update.message.reply_text("Выберите действие:", reply_markup=limited_reply_markup)
                 return
             elif 'anketa' in banned_features and 'appeal' in banned_features:
                 await update.message.reply_text("❌ Вы не можете подавать анкеты и обращения.")
@@ -65,6 +83,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 limited_reply_markup = ReplyKeyboardMarkup(limited_keyboard, resize_keyboard=True)
                 await update.message.reply_text("Выберите действие:", reply_markup=limited_reply_markup)
                 return
+            # Проверка отключения рассылок
+            elif not can_receive_broadcast:
+                await update.message.reply_text("🔔 Вы отключили рассылки.")
+                # Просто отправляем обычное меню, рассылки - это не функция, которая блокируется кнопками
+                # Но можно упомянуть это в /settings
         
         # Добавьте логирование для отладки
         logger.info(f"🔄 Обработка пользователя: {update.effective_user.username}, ID: {update.effective_user.id}")
