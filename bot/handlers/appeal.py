@@ -2,7 +2,7 @@
 import re
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # Добавлен timezone
 from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 from bot.database.core import get_supabase
@@ -49,13 +49,16 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         user_data = response.data[0]
         last_anketa = user_data.get('last_anketa_time')
         last_appeal = user_data.get('last_appeal_time')
-        
-       now = datetime.now(timezone.utc)
-        
+
+        # --- ИСПРАВЛЕНО: Используем timezone-aware now ---
+        now = datetime.now(timezone.utc)
+
         if last_anketa:
+            # last_anketa приходит в формате ISO 8601
+            # ИСПРАВЛЕНО: явно указываем tzinfo
             last_anketa_time = datetime.fromisoformat(last_anketa.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
-            time_diff = now - last_anketa_time
-            # Проверяем, прошло ли 3 час
+            time_diff = now - last_anketa_time # Теперь оба aware
+            # Проверяем, прошло ли 3 часа
             if time_diff < timedelta(hours=3):
                 # Если прошло меньше 3 часов, проверяем задержки
                 if time_diff < timedelta(minutes=20):
@@ -66,10 +69,12 @@ async def start_appeal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                     # Первая отправка - 3 минуты
                     await update.message.reply_text("⏱️ Обращение можно отправить только через 3 минуты после предыдущей анкеты.")
                     return ConversationHandler.END
-        
+
         if last_appeal:
-            last_appeal_time = datetime.fromisoformat(last_appeal.replace('Z', '+00:00'))
-            time_diff = now - last_appeal_time
+            # last_appeal приходит в формате ISO 8601
+            # ИСПРАВЛЕНО: явно указываем tzinfo
+            last_appeal_time = datetime.fromisoformat(last_appeal.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
+            time_diff = now - last_appeal_time # Теперь оба aware
             # Проверяем, прошло ли 3 часа
             if time_diff < timedelta(hours=3):
                 # Если прошло меньше 3 часов, проверяем задержки
@@ -177,9 +182,10 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
             
             # Обновляем время последнего обращения
+            # ИСПРАВЛЕНО: используем timezone-aware datetime
             from datetime import datetime
             supabase.table('users').update({
-                'last_appeal_time': datetime.now().isoformat()
+                'last_appeal_time': datetime.now(timezone.utc).isoformat()
             }).eq('user_id', user_id).execute()
             
         except Exception as e:
