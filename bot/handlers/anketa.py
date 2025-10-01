@@ -2,7 +2,7 @@
 import re
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # Добавлен timezone
 from telegram import Update, ReplyKeyboardRemove, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler
 from bot.database.core import get_supabase
@@ -30,6 +30,22 @@ async def start_application(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """Начинает процесс заполнения анкеты."""
     user_id = update.effective_user.id
     supabase = get_supabase()
+    
+    # --- ДОБАВЛЕНО: Проверка полного бана ---
+    user_response = supabase.table('users').select('is_banned').eq('user_id', user_id).execute()
+    if user_response.data:
+        user_data = user_response.data[0]
+        if user_data.get('is_banned'):
+            await update.message.reply_text("❌ Вы заблокированы и не можете пользоваться ботом.")
+            # Возвращаем основное меню без кнопок анкеты и обращения
+            main_keyboard = [
+                ["🤖 О боте"],
+                ["🐍 Змейка", "🎡 Барабан", "⚙️ Настройки"]
+            ]
+            reply_markup = ReplyKeyboardMarkup(main_keyboard, resize_keyboard=True)
+            await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
+            return ConversationHandler.END
+    # --- КОНЕЦ ДОБАВЛЕНИЯ ---
     
     # --- ДОБАВЛЕНО: Проверка частичного бана для анкеты ---
     user_response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
@@ -62,40 +78,43 @@ async def start_application(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         user_data = response.data[0]
         last_anketa = user_data.get('last_anketa_time')
         last_appeal = user_data.get('last_appeal_time')
-        
-    now = datetime.now(timezone.utc) # Используем timezone-aware now
 
-    if last_anketa:
-        # last_anketa приходит в формате ISO 8601
-        last_anketa_time = datetime.fromisoformat(last_anketa.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
-        time_diff = now - last_anketa_time # Теперь оба aware
-        # Проверяем, прошло ли 3 часа
-        if time_diff < timedelta(hours=3):
-            # Если прошло меньше 3 часов, проверяем задержки
-            if time_diff < timedelta(minutes=3):
-                # Первая отправка - 3 минуты
-                await update.message.reply_text("⏱️ Повторная анкета возможна только через 3 минуты после отправки предыдущей.")
-                return ConversationHandler.END
-            elif time_diff < timedelta(minutes=20):
-                # Повторная отправка - 20 минут
-                await update.message.reply_text("⏱️ Повторная анкета возможна только через 20 минут после отправки предыдущей.")
-                return ConversationHandler.END
+        # --- ИСПРАВЛЕНО: Используем timezone-aware now ---
+        now = datetime.now(timezone.utc)
 
-    if last_appeal:
-        # last_appeal приходит в формате ISO 8601
-        last_appeal_time = datetime.fromisoformat(last_appeal.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
-        time_diff = now - last_appeal_time # Теперь оба aware
-        # Проверяем, прошло ли 3 часа
-        if time_diff < timedelta(hours=3):
-            # Если прошло меньше 3 часов, проверяем задержки
-            if time_diff < timedelta(minutes=20):
-                # Повторная отправка - 20 минут
-                await update.message.reply_text("⏱️ Анкету можно отправить только через 20 минут после предыдущего обращения.")
-                return ConversationHandler.END
-            elif time_diff < timedelta(minutes=3):
-                # Первая отправка - 3 минуты
-                await update.message.reply_text("⏱️ Анкету можно отправить только через 3 минуты после предыдущего обращения.")
-                return ConversationHandler.END
+        if last_anketa:
+            # last_anketa приходит в формате ISO 8601
+            # ИСПРАВЛЕНО: явно указываем tzinfo
+            last_anketa_time = datetime.fromisoformat(last_anketa.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
+            time_diff = now - last_anketa_time # Теперь оба aware
+            # Проверяем, прошло ли 3 часа
+            if time_diff < timedelta(hours=3):
+                # Если прошло меньше 3 часов, проверяем задержки
+                if time_diff < timedelta(minutes=3):
+                    # Первая отправка - 3 минуты
+                    await update.message.reply_text("⏱️ Повторная анкета возможна только через 3 минуты после отправки предыдущей.")
+                    return ConversationHandler.END
+                elif time_diff < timedelta(minutes=20):
+                    # Повторная отправка - 20 минут
+                    await update.message.reply_text("⏱️ Повторная анкета возможна только через 20 минут после отправки предыдущей.")
+                    return ConversationHandler.END
+
+        if last_appeal:
+            # last_appeal приходит в формате ISO 8601
+            # ИСПРАВЛЕНО: явно указываем tzinfo
+            last_appeal_time = datetime.fromisoformat(last_appeal.replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
+            time_diff = now - last_appeal_time # Теперь оба aware
+            # Проверяем, прошло ли 3 часа
+            if time_diff < timedelta(hours=3):
+                # Если прошло меньше 3 часов, проверяем задержки
+                if time_diff < timedelta(minutes=20):
+                    # Повторная отправка - 20 минут
+                    await update.message.reply_text("⏱️ Анкету можно отправить только через 20 минут после предыдущего обращения.")
+                    return ConversationHandler.END
+                elif time_diff < timedelta(minutes=3):
+                    # Первая отправка - 3 минуты
+                    await update.message.reply_text("⏱️ Анкету можно отправить только через 3 минуты после предыдущего обращения.")
+                    return ConversationHandler.END
     
     # Удаляем предыдущую незавершённую анкету
     supabase.table('temp_applications').delete().eq('user_id', user_id).execute()
@@ -264,9 +283,10 @@ async def receive_why_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             )
             
             # Обновляем время последней анкеты
+            # ИСПРАВЛЕНО: используем timezone-aware datetime
             from datetime import datetime
             supabase.table('users').update({
-                'last_anketa_time': datetime.now().isoformat()
+                'last_anketa_time': datetime.now(timezone.utc).isoformat()
             }).eq('user_id', user_id).execute()
             
         except Exception as e:
