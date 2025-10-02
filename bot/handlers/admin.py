@@ -13,7 +13,7 @@ def get_admin_ids() -> list:
 def format_user_list(users: list, title: str = "Список пользователей", squad_or_city=False) -> str:
     """Форматирует список пользователей для вывода."""
     if not users:
-        return f" obstruction {users} пуст."
+        return f"{title} пуст."
 
     lines = []
     for i, user in enumerate(users):
@@ -54,7 +54,7 @@ def format_user_list(users: list, title: str = "Список пользоват�
 def format_banned_user_list(users: list) -> str:
     """Форматирует список заблокированных пользователей для вывода."""
     if not users:
-        return " obstruction {users} пуст."
+        return "Список заблокированных пользователей пуст."
 
     lines = []
     for user in users:
@@ -84,8 +84,8 @@ async def _get_user_id_by_username(username: str) -> int:
         username = username[1:]
     supabase = get_supabase()
     response = supabase.table('users').select('user_id').eq('username', username).execute()
-    # ИСПРАВЛЕНО: проверка .data (строка 88)
-    if response.
+    # ИСПРАВЛЕНО: проверка .data
+    if response.data:
         return response.data[0]['user_id']
     return None
 
@@ -136,7 +136,7 @@ async def list_banned_users(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     users = response.data or []
 
     if not users:
-        await update.message.reply_text(" obstruction {users} пуст.")
+        await update.message.reply_text("Список заблокированных пользователей пуст.")
         return
 
     text = format_banned_user_list(users)
@@ -199,7 +199,7 @@ async def add_to_squad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     supabase = get_supabase()
     existing = supabase.table('users').select('user_id').eq('user_id', user_id).execute()
     # ИСПРАВЛЕНО: проверка .data
-    if not existing.
+    if not existing.data:
         await update.message.reply_text("❌ Пользователь не найден в базе.")
         return
 
@@ -235,7 +235,7 @@ async def add_to_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     supabase = get_supabase()
     existing = supabase.table('users').select('user_id').eq('user_id', user_id).execute()
     # ИСПРАВЛЕНО: проверка .data
-    if not existing.
+    if not existing.data:
         await update.message.reply_text("❌ Пользователь не найден в базе.")
         return
 
@@ -422,7 +422,7 @@ async def restrict_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Получаем текущие ограничения
     response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
     # ИСПРАВЛЕНО: проверка .data
-    if response.
+    if response.data:
         current_bans = response.data[0].get('banned_features', [])
         if restriction not in current_bans:
             current_bans.append(restriction)
@@ -467,7 +467,7 @@ async def unrestrict_user(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Получаем текущие ограничения
     response = supabase.table('users').select('banned_features').eq('user_id', user_id).execute()
     # ИСПРАВЛЕНО: проверка .data
-    if response.
+    if response.data:
         current_bans = response.data[0].get('banned_features', [])
         if restriction in current_bans:
             current_bans.remove(restriction)
