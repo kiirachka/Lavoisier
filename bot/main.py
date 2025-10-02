@@ -106,7 +106,7 @@ def log_handler(func):
             logger.exception(f"💥 Ошибка в обработчике {func.__name__}: {e}")
             raise
     return wrapper
-# === КОНЕЦ ДОБАВЛЕНИЯ ===
+# === КОНЕЦ ДОБАВЛЕНИЯ ===т
 
 
 async def create_bot_application() -> "Application":
