@@ -1,3 +1,5 @@
+# run.py (без обработки вебхука, только heartbeat)
+
 import asyncio
 import logging
 import sys
@@ -75,9 +77,10 @@ async def heartbeat_handler(request):
 async def setup_app():
     """Настраивает aiohttp приложение."""
     app = web.Application()
-    # Добавляем только один обработчик для /heartbeat - он будет работать и для GET и для HEAD
+    # Добавляем обработчики для heartbeat
     app.router.add_get('/heartbeat', heartbeat_handler)
-    app.router.add_get('/', heartbeat_handler)
+    app.router.add_get('/', heartbeat_handler) # Render использует GET / для проверки
+    # НЕ добавляем маршрут для вебхука, так как используем polling
     return app
 
 async def main():
