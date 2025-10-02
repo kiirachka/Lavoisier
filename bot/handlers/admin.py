@@ -149,9 +149,9 @@ async def note(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     #     return
 
     commands = """
-```/admin_commands``` - Показать админские команды
-```/list_all``` - Список всех пользователей
-```/list_squad``` - Список участников сквада
+/admin_commands - Показать админские команды
+/list_all - Список всех пользователей
+/list_squad - Список участников сквада
 /list_city - Список участников города
 /list_banned - Список заблокированных пользователей
 /add_to_squad - Добавить в сквад
