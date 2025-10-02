@@ -1,3 +1,4 @@
+# bot/main.py
 print("🟢 [BOT.MAIN] Импорт bot/main.py начался...")
 import asyncio
 import os
@@ -106,35 +107,51 @@ def log_handler(func):
             logger.exception(f"💥 Ошибка в обработчике {func.__name__}: {e}")
             raise
     return wrapper
-# === КОНЕЦ ДОБАВЛЕНИЯ ===т
+# === КОНЕЦ ДОБАВЛЕНИЯ ===
 
 
-async def start_bot_application(application: "Application", app_context: dict):
-    """Запускает переданный экземпляр Application бота."""
+async def create_bot_application() -> "Application":
+    """Создает и настраивает экземпляр Application бота."""
+    token = os.getenv("BOT_TOKEN")
+
+    logger.info("🔧 [BOT] Создаем Application...")
+    application = ApplicationBuilder().token(token).build()
+
+    logger.info("🔄 Инициализируем приложение...")
+    await application.initialize()
+
+    supabase = get_supabase()
+
+    # Управление инстансами
+    INSTANCE_ID = str(uuid.uuid4())
+    logger.info(f"🔑 Этот инстанс имеет ID: {INSTANCE_ID}")
+
+    # Деактивируем все предыдущие инстансы
+    logger.info("🔌 Деактивируем все предыдущие инстансы бота...")
     try:
-        # Устанавливаем вебхук (URL должен быть настроен в .env)
-        WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-        if WEBHOOK_URL:
-            logger.info(f"🔗 Устанавливаем вебхук на {WEBHOOK_URL}")
-            # Удаляем вебхук, так как используем polling
-            await application.bot.delete_webhook(drop_pending_updates=True)
-            logger.info("✅ Вебхук удалён для использования polling.")
-        else:
-            logger.info("🌐 Используем long polling, вебхук не установлен.")
-
-        logger.info("🚀 Запускаем приложение...")
-        await application.start()
-
-        logger.info("🔄 Запускаем обработку обновлений...")
-        # ЗАПУСК POLLING
-        await application.updater.start_polling(drop_pending_updates=True)
-
-        logger.info("✅ Бот успешно запущен и работает через polling.")
-
+        supabase.table("bot_instances").update({"is_active": False}).eq("is_active", True).execute()
+        logger.info("✅ Все предыдущие инстансы деактивированы.")
     except Exception as e:
-        logger.exception("💥 Ошибка при запуске бота:")
-        raise
+        logger.error(f"❌ Ошибка при деактивации старых инстансов: {e}")
 
+    # Автоочистка: удаляем инстансы старше 1 часа
+    logger.info("🧹 Очищаем старые инстансы (старше 1 часа)...")
+    try:
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        supabase.table("bot_instances").delete().lt("started_at", one_hour_ago).execute()
+        logger.info("✅ Старые инстансы удалены.")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при очистке старых инстансов: {e}")
+
+    logger.info("✅ Регистрируем текущий инстанс как активный...")
+    try:
+        supabase.table("bot_instances").insert({
+            "instance_id": INSTANCE_ID,
+            "is_active": True,
+        }).execute()
+        logger.info("✅ Текущий инстанс успешно зарегистрирован.")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при регистрации текущего инстанса: {e}")
 
     # Регистрация обработчиков — ПОРЯДОК ВАЖЕН!
 
@@ -208,6 +225,8 @@ async def start_bot_application(application: "Application", app_context: dict):
     logger.info("🚀 Приложение бота инициализировано и готово к запуску.")
     return application
 
+
+# ... (остальной код файла, включая start_bot_application и stop_bot_application) ...
 
 async def start_bot_application(application: "Application", app_context: dict):
     """Запускает переданный экземпляр Application бота."""
