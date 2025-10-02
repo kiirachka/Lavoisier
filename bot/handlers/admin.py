@@ -84,7 +84,7 @@ async def _get_user_id_by_username(username: str) -> int:
         username = username[1:]
     supabase = get_supabase()
     response = supabase.table('users').select('user_id').eq('username', username).execute()
-    # ИСПРАВЛЕНО: проверка .data
+    # ИСПРАВЛЕНО: проверка .data (строка 88)
     if response.
         return response.data[0]['user_id']
     return None
@@ -149,6 +149,7 @@ async def note(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     #     return
 
     commands = """
+/admin_commands - Показать админские команды
 /list_all - Список всех пользователей
 /list_squad - Список участников сквада
 /list_city - Список участников города
